@@ -32,7 +32,7 @@
     "href": "renju_home.html",
     "title": "Renju",
     "section": "",
-    "text": "Ugetsu (雨月)"
+    "text": "Renju (連珠) is a type of gomoku (五目) played on a go board.\n\n\n\n\n\nFor precise rules, please refer to the Wikipedia page.\nRenju is a finite-state, 2-player, zero-sum game of perfect information, and it is known that without any additional rules, Black (the first player) always wins. Below, I analyze Black’s strategies based on openings.\nUgetsu (雨月)"
   },
   {
     "objectID": "cambridge.html",
