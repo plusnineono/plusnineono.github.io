@@ -211,7 +211,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
   --bg: #fafaf8; --grid: #c9a878; --star: #a07b3a; --black: #111; --white: #fafafa;
   --accent: #0b6cff; --warn: #d95832; --ok: #0a7a27;
 }
-body { background: var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+body { background: var(--bg); }
 .board-wrap { display:flex; justify-content:center; margin: 8px 0 24px; }
 .controls { max-width: 960px; margin: 0 auto 8px; padding: 8px 12px; }
 .controls .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -226,10 +226,13 @@ summary { cursor:pointer; }
 
 <script>
 (function(){
-  const N = 15; const EMPTY=0, BLACK=1, WHITE=2;
+  const N = 15; // board size
+  const EMPTY=0, BLACK=1, WHITE=2;
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
-  const MARGIN = 32, SIZE = canvas.width, CELL = (SIZE - 2*MARGIN)/(N-1);
+  const MARGIN = 32; // px
+  const SIZE = canvas.width; // assume square
+  const CELL = (SIZE - 2*MARGIN)/(N-1);
   const STAR_PTS = [[3,3],[3,11],[7,7],[11,3],[11,11]];
   const sideSelect = document.getElementById('side-select');
   const levelSelect = document.getElementById('level-select');
@@ -242,7 +245,9 @@ summary { cursor:pointer; }
 
   function reset(){
     board = Array.from({length:N}, ()=>Array(N).fill(EMPTY));
-    history = []; winner = null; lastMove = null; turn = BLACK;
+    history = [];
+    winner = null; lastMove = null;
+    turn = BLACK; // black starts
     humanPlays = sideSelect.value === 'human-black' ? BLACK : WHITE;
     aiPlays = humanPlays===BLACK? WHITE : BLACK;
     draw();
@@ -254,41 +259,71 @@ summary { cursor:pointer; }
     const rect = canvas.getBoundingClientRect();
     const x = (ev.clientX - rect.left) * (canvas.width/rect.width);
     const y = (ev.clientY - rect.top) * (canvas.height/rect.height);
+    // snap to nearest intersection
     let c = Math.round((x - MARGIN)/CELL);
     let r = Math.round((y - MARGIN)/CELL);
     if (r<0||r>=N||c<0||c>=N) return null;
     const px = MARGIN + c*CELL, py = MARGIN + r*CELL;
     const dist = Math.hypot(px-x, py-y);
-    if (dist>CELL*0.45) return null;
+    if (dist>CELL*0.45) return null; // must click close
     return {r, c};
   }
 
   function draw(){
+    // bg
     ctx.clearRect(0,0,SIZE,SIZE);
-    ctx.fillStyle = '#f2e5c7'; ctx.fillRect(0,0,SIZE,SIZE);
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid')||'#c9a878'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#f2e5c7';
+    ctx.fillRect(0,0,SIZE,SIZE);
+    // grid
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid')||'#c9a878';
+    ctx.lineWidth = 1;
     for (let i=0;i<N;i++){
       const p = MARGIN + i*CELL;
       ctx.beginPath(); ctx.moveTo(MARGIN, p); ctx.lineTo(SIZE-MARGIN, p); ctx.stroke();
-    }
-    for (let i=0;i<N;i++){
-      const p = MARGIN + i*CELL;
       ctx.beginPath(); ctx.moveTo(p, MARGIN); ctx.lineTo(p, SIZE-MARGIN); ctx.stroke();
     }
+    // star points
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--star')||'#a07b3a';
-    STAR_PTS.forEach(([r,c])=>{ const x = MARGIN + c*CELL, y = MARGIN + r*CELL; ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); });
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++){ if (board[r][c]) drawStone(r,c,board[r][c]); }
-    if (lastMove){ const {r,c}=lastMove; const x=MARGIN+c*CELL, y=MARGIN+r*CELL; ctx.strokeStyle='#3a86ff'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,CELL*0.22,0,Math.PI*2); ctx.stroke(); }
-    if (winner){ ctx.save(); ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,SIZE/2-24,SIZE,48); ctx.fillStyle='#fff'; ctx.font='700 22px system-ui, ui-sans-serif, -apple-system, Segoe UI, Roboto'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(`${winner===BLACK?'Black':'White'} wins!`, SIZE/2, SIZE/2); ctx.restore(); }
+    STAR_PTS.forEach(([r,c])=>{
+      const x = MARGIN + c*CELL, y = MARGIN + r*CELL;
+      ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill();
+    });
+    // stones
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+      if (!board[r][c]) continue; const color = board[r][c];
+      drawStone(r,c,color);
+    }
+    // last move marker
+    if (lastMove){
+      const {r,c} = lastMove; const x=MARGIN+c*CELL, y=MARGIN+r*CELL;
+      ctx.strokeStyle = '#3a86ff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(x,y, CELL*0.22, 0, Math.PI*2); ctx.stroke();
+    }
+    // winner banner
+    if (winner){
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0,SIZE/2-24,SIZE,48);
+      ctx.fillStyle = '#fff'; ctx.font = '700 22px system-ui, ui-sans-serif, -apple-system, Segoe UI, Roboto';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`${winner===BLACK?'Black':'White'} wins!`, SIZE/2, SIZE/2);
+      ctx.restore();
+    }
   }
+
   function drawStone(r,c,color){
     const x = MARGIN + c*CELL, y = MARGIN + r*CELL, rad = CELL*0.32;
-    const g = ctx.createRadialGradient(x-rad*0.3,y-rad*0.3,rad*0.2, x,y,rad);
-    if (color===BLACK){ g.addColorStop(0,'#444'); g.addColorStop(1,'#111'); } else { g.addColorStop(0,'#fafafa'); g.addColorStop(1,'#d0d0d0'); }
-    ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.stroke();
+    const grad = ctx.createRadialGradient(x-rad*0.3,y-rad*0.3,rad*0.2, x,y,rad);
+    if (color===BLACK){ grad.addColorStop(0,'#444'); grad.addColorStop(1,'#111'); }
+    else { grad.addColorStop(0,'#fafafa'); grad.addColorStop(1,'#d0d0d0'); }
+    ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2);
+    ctx.fillStyle = grad; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.stroke();
   }
+
   function status(msg){ statusEl.textContent = msg; }
-  function onClick(ev){ if (winner) return; const pos = toXY(ev); if (!pos) return; humanTryMove(pos.r,pos.c); }
+
+  function onClick(ev){ if (winner) return; const pos = toXY(ev); if (!pos) return; humanTryMove(pos.r, pos.c); }
 
   function humanTryMove(r,c){
     if (board[r][c]!==EMPTY) return;
@@ -300,15 +335,22 @@ summary { cursor:pointer; }
   }
 
   function doMove(r,c,color){
-    board[r][c]=color; lastMove={r,c}; history.push({r,c,color});
+    board[r][c] = color; lastMove = {r,c}; history.push({r,c,color});
+    // win check
     const lineLen = maxLineThrough(r,c,color);
-    if (color===BLACK){ if (lineLen===5) winner=BLACK; } else { if (lineLen>=5) winner=WHITE; }
+    if (color===BLACK){
+      if (lineLen===5) { winner = BLACK; }
+    } else {
+      if (lineLen>=5) { winner = WHITE; }
+    }
     turn = (color===BLACK) ? WHITE : BLACK;
     draw();
     status(winner ? `${winner===BLACK?'Black':'White'} wins!` : `${turn===humanPlays? 'Your' : 'Computer'} move…`);
   }
 
-  function undo(){ if (!history.length || winner) return; const steps = (history.length>=2)?2:1; for (let i=0;i<steps;i++){ const m=history.pop(); board[m.r][m.c]=EMPTY; } winner=null; lastMove=history[history.length-1]||null; turn=BLACK; if (history.length){ const last=history[history.length-1]; turn=(last.color===BLACK)?WHITE:BLACK; } draw(); status('Undid.'); }
+  function undo(){ if (!history.length || winner) return; const steps = (history.length>=2)?2:1; for (let i=0;i<steps;i++){ const m=history.pop(); board[m.r][m.c]=EMPTY; }
+    winner=null; lastMove=history[history.length-1]||null; turn=BLACK; if (history.length){ const last=history[history.length-1]; turn = (last.color===BLACK)?WHITE:BLACK; }
+    draw(); status('Undid.'); }
 
   function maxLineThrough(r,c,color){
     let best=1; const dirs=[[1,0],[0,1],[1,1],[1,-1]];
@@ -319,9 +361,10 @@ summary { cursor:pointer; }
     }
     return best;
   }
+
   function inB(r,c){ return r>=0&&r<N&&c>=0&&c<N; }
 
-  // --- Forbidden for Black (fixed double-three counting) ---
+  // ===== Forbidden move detection (bug-fixed) =====
   function forbiddenIfBlackMove(r,c){
     board[r][c]=BLACK;
     const len = maxLineThrough(r,c,BLACK);
@@ -333,191 +376,105 @@ summary { cursor:pointer; }
     if (threes>=2) return {forbidden:true, reason:'double-three'};
     return {forbidden:false, reason:null};
   }
+
   function lineStringAround(r,c,color, dr,dc){
-    const me=color; let cells=[], coords=[];
+    const me = color;
+    let cells=[]; let coords=[];
     let rr=r-10*dr, cc=c-10*dc; while(!inB(rr,cc)){ rr+=dr; cc+=dc; }
     for (; inB(rr,cc); rr+=dr,cc+=dc){
       coords.push([rr,cc]);
-      const v=board[rr][cc];
-      if (rr===r && cc===c) cells.push('x');
+      const v = board[rr][cc];
+      if (rr===r && cc===c) { cells.push('x'); }
       else if (v===EMPTY) cells.push('.');
       else if (v===me) cells.push('x');
       else cells.push('o');
     }
-    const s=cells.join(''); const idx = coords.findIndex(p=>p[0]===r&&p[1]===c);
+    const s = cells.join('');
+    const idx = coords.findIndex(p=>p[0]===r&&p[1]===c);
     return {s, idx};
   }
+
+  // FIX: count at most one \"free three\" per direction to avoid false double-three
   function countThreatsAt(r,c,color){
-    const dirs=[[1,0],[0,1],[1,1],[1,-1]]; let fours=0, threes=0;
-    const fourPats=[/xxxx\./g,/\.xxxx/g,/xxx\.x/g,/x\.xxx/g,/xx\.xx/g,/\.xxxx\./g];
-    const threePats=[/\.xxx\./g,/\.xx\.x\./g,/\.x\.xx\./g];
+    const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+    let fours=0, threes=0;
+    const fourPats = [/xxxx\./g,/\.xxxx/g,/xxx\.x/g,/x\.xxx/g,/xx\.xx/g,/\.xxxx\./g];
+    const threePats = [/\.xxx\./g,/\.xx\.x\./g,/\.x\.xx\./g];
     for (const [dr,dc] of dirs){
       const {s, idx} = lineStringAround(r,c,color, dr,dc);
-      let dirHasFour=false, dirHasThree=false;
-      for (const re of fourPats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx<m.index+m[0].length){ dirHasFour=true; break; } } if (dirHasFour) break; }
+      let dirHasFour=false;
+      for (const re of fourPats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length){ dirHasFour=true; break; } } if (dirHasFour) break; }
       if (dirHasFour) fours += 1;
-      for (const re of threePats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx<m.index+m[0].length){ dirHasThree=true; break; } } if (dirHasThree) break; }
+      let dirHasThree=false;
+      for (const re of threePats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length){ dirHasThree=true; break; } } if (dirHasThree) break; }
       if (dirHasThree) threes += 1;
     }
     return {fours, threes};
   }
 
-  // ---------- Helpers that were missing (cause of infinite "thinking") ----------
-  function emptyCells(){
-    const cells=[];
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]===EMPTY) cells.push({r,c});
-    return cells;
-  }
-  function hasNeighbor(r,c,dist){
-    for (let dr=-dist; dr<=dist; dr++){
-      for (let dc=-dist; dc<=dist; dc++){
-        if (!dr && !dc) continue;
-        const rr=r+dr, cc=c+dc;
-        if (inB(rr,cc) && board[rr][cc]!==EMPTY) return true;
-      }
-    }
-    return false;
-  }
-  function stonesPlaced(){
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]!==EMPTY) return true;
-    return false;
-  }
-  function evalMove(color, r, c){
-    if (!inB(r,c) || board[r][c]!==EMPTY) return -1e18;
-    const opp = (color===BLACK)?WHITE:BLACK;
-    board[r][c]=color;
-    const len = maxLineThrough(r,c,color);
-    const t = countThreatsAt(r,c,color);
-    let sc = 0;
-    // win now
-    if ((color===BLACK && len===5) || (color===WHITE && len>=5)) sc += 1e7;
-    sc += 140*len + 5200*t.fours + 1600*t.threes;
-    // center preference
-    const dx = Math.abs(c - 7), dy = Math.abs(r - 7);
-    sc += 50 * (7 - Math.max(dx,dy));
-    // slight penalty if allows opp immediate win (look one ply)
-    let leaks = 0;
-    // Temporarily switch turns and see if opp has an immediate win; scan limited neighborhood for speed
-    for (const nb of candidateNeighborhood({r,c}, 2)){
-      if (board[nb.r][nb.c]===EMPTY && isWinningPlacement(opp, nb.r, nb.c)) { leaks++; if (leaks>1) break; }
-    }
-    sc -= leaks*800;
-    board[r][c]=EMPTY;
-    return sc;
-  }
-  function candidateNeighborhood(anchor, dist){
-    const out=[]; const seen=new Set();
-    for (let dr=-dist; dr<=dist; dr++){
-      for (let dc=-dist; dc<=dist; dc++){
-        const rr=anchor.r+dr, cc=anchor.c+dc;
-        if (inB(rr,cc) && board[rr][cc]===EMPTY){
-          const k=rr+','+cc; if (!seen.has(k)){ seen.add(k); out.push({r:rr,c:cc}); }
-        }
-      }
-    }
-    return out;
-  }
-  function candidateMoves(color){
-    // First move -> center
-    if (!stonesPlaced()) return [{r:7,c:7}];
-    // Gather empties near any stone (<=2)
-    const near=[]; const seen=new Set();
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-      if (board[r][c]===EMPTY && hasNeighbor(r,c,2)){
-        const k=r+','+c; if (!seen.has(k)){ seen.add(k); near.push({r,c}); }
-      }
-    }
-    // If somehow none, fall back to all empties
-    const pool = near.length ? near : emptyCells();
-    // Score & sort; keep top 32 to bound branching
-    const scored = pool.map(m => ({m, s: evalMove(color, m.r, m.c)}))
-                       .sort((a,b)=> b.s - a.s)
-                       .slice(0, 32)
-                       .map(o=>o.m);
-    return scored;
-  }
-
-  // ===== AI (Two levels): Quick and stronger Solver) =====
-  const TT = new Map(); // transposition table
-
+  // ===== AI =====
   function aiMove(){
     if (winner || turn!==aiPlays) return;
-    const mode = parseInt(levelSelect.value,10)||0; // 0 Quick, 1 Solver
-    const thinkMs = (mode===0)? 300 : 2200;
+    const mode = parseInt(levelSelect.value,10)||0; // 0: Quick, 1: Solver
+    const thinkMs = (mode===0)? 350 : 1500;
     status('Computer thinking…');
     setTimeout(()=>{
-      try {
-        const me = aiPlays, opp = (me===BLACK)?WHITE:BLACK;
+      const me = aiPlays, opp = (me===BLACK)?WHITE:BLACK;
 
-        // 0) Block opponent's immediate win (scan all empties for robustness)
-        const oppWins = immediateWinningMovesAll(opp);
-        if (oppWins.length){
-          let blockers = oppWins;
-          if (me===BLACK) blockers = blockers.filter(m=> !forbiddenIfBlackMove(m.r,m.c).forbidden);
-          if (blockers.length){ const best = pickBest(me, blockers); doMove(best.r, best.c, me); return; }
-        }
-
-        if (mode===1){
-          // 1) VCT: chain free-threes to reach VCF
-          const vct = findVCTMove(me, 6, Math.floor(thinkMs*0.55));
-          if (vct && vct.move){ doMove(vct.move.r, vct.move.c, me); return; }
-          // 2) VCF: force with fours
-          const vcf = findVCFMove(me, 10, Math.floor(thinkMs*0.35));
-          if (vcf && vcf.move){ doMove(vcf.move.r, vcf.move.c, me); return; }
-        }
-
-        // 3) Defensive pre-emption of opponent free-threes
-        const critical = criticalThreeSquares(opp);
-        if (critical.length){
-          let blocks = critical;
-          if (me===BLACK) blocks = blocks.filter(m=> !forbiddenIfBlackMove(m.r,m.c).forbidden);
-          if (blocks.length){ const best = pickBest(me, blocks); doMove(best.r, best.c, me); return; }
-        }
-
-        // 4) Timed alpha–beta with TT
-        const move = bestMoveTimed(me, thinkMs);
-        if (!move){
-          // Greedy legal fallback
-          let cands = candidateMoves(me);
-          if (me===BLACK) cands = cands.filter(m=>!forbiddenIfBlackMove(m.r,m.c).forbidden);
-          if (cands.length){ const best = pickBest(me, cands); doMove(best.r, best.c, me); return; }
-          status('AI passes (no legal moves).'); turn = humanPlays; return;
-        }
-        doMove(move.r, move.c, me);
-      } catch (e){
-        console.error('AI error:', e);
-        // Safe fallback: pick highest eval candidate
-        let cands = candidateMoves(aiPlays);
-        if (aiPlays===BLACK) cands = cands.filter(m=> !forbiddenIfBlackMove(m.r,m.c).forbidden);
-        const best = cands.length ? pickBest(aiPlays, cands) : null;
-        if (best) doMove(best.r, best.c, aiPlays);
-        else { status('AI error; skipping move.'); turn = humanPlays; }
+      // Must block opponent immediate wins
+      const oppWins = immediateWinningMoves(opp);
+      if (oppWins.length){
+        const blockers = candidateMoves(me).filter(m=> oppWins.some(w=>w.r===m.r && w.c===m.c))
+          .filter(m=> me!==BLACK || !forbiddenIfBlackMove(m.r,m.c).forbidden);
+        if (blockers.length){ const best = pickBest(me, blockers); doMove(best.r, best.c, me); return; }
       }
+
+      // Solver tries VCF first
+      if (mode===1){
+        const vcf = findVCFMove(me, 8, Math.floor(thinkMs*0.6));
+        if (vcf && vcf.move){ doMove(vcf.move.r, vcf.move.c, me); return; }
+      }
+
+      // Defensive pre-emption of opponent free threes
+      const critical = criticalThreeSquares(opp);
+      if (critical.length){
+        const blocks = candidateMoves(me).filter(m=> critical.some(p=>p.r===m.r && p.c===m.c))
+          .filter(m=> me!==BLACK || !forbiddenIfBlackMove(m.r,m.c).forbidden);
+        if (blocks.length){ const best = pickBest(me, blocks); doMove(best.r, best.c, me); return; }
+      }
+
+      // Fallback: timed search, then greedy if timed out
+      let move = bestMoveTimed(me, thinkMs);
+      if (!move){
+        let cands = candidateMoves(me);
+        if (me===BLACK) cands = cands.filter(m=>!forbiddenIfBlackMove(m.r,m.c).forbidden);
+        if (cands.length) move = pickBest(me, cands);
+      }
+      if (!move){ status('AI passes (no legal moves).'); turn = humanPlays; return; }
+      doMove(move.r, move.c, me);
     }, 10);
   }
 
-  function pickBest(color, list){ let best=list[0], bestS=-1e18; for (const m of list){ const s=evalMove(color,m.r,m.c); if (s>bestS){best=m; bestS=s;} } return best; }
+  function pickBest(color, list){
+    let best=list[0], bestS=-1e18; for (const m of list){ const s=evalMove(color,m.r,m.c); if (s>bestS){best=m; bestS=s;} } return best;
+  }
 
   function bestMoveTimed(color, ms){
-    const start = performance.now(); const deadline = start + ms;
-    let best=null;
-    const winNow = immediateWinningMovesAll(color)[0]; if (winNow) return winNow;
-    TT.clear();
+    const start = performance.now();
+    const deadline = start + ms;
+    let best=null, bestScore=-1e18;
+    const winNow = immediateWinningMoves(color)[0];
+    if (winNow) return winNow;
     for (let depth=2; depth<=9; depth++){
-      const res = negamaxTT(color, depth, -1e18, 1e18, null, deadline);
+      const res = negamax(color, depth, -1e18, 1e18, null, deadline);
       if (res.timedOut) break;
-      if (res.move){ best = res.move; }
+      if (res.move){ best = res.move; bestScore = res.score; }
       if (performance.now()>deadline) break;
     }
     return best;
   }
 
-  function boardKey(color, depth){
-    let s=''; for (let r=0;r<N;r++) for (let c=0;c<N;c++) s += board[r][c];
-    return s + '|' + color + '|' + depth;
-  }
-
-  function negamaxTT(color, depth, alpha, beta, last, deadline){
+  function negamax(color, depth, alpha, beta, last, deadline){
     if (performance.now()>deadline) return {score:0, move:null, timedOut:true};
     const opp = (color===BLACK)?WHITE:BLACK;
 
@@ -528,71 +485,76 @@ summary { cursor:pointer; }
     }
     if (depth===0){ return {score: staticEval(color), move:null, timedOut:false}; }
 
-    // TT probe
-    const key = boardKey(color, depth); const probed = TT.get(key);
-    if (probed && probed.depth>=depth){
-      if (probed.flag==='EXACT') return {score: probed.score, move: probed.best, timedOut:false};
-      if (probed.flag==='LOWER' && probed.score>alpha) alpha = probed.score;
-      if (probed.flag==='UPPER' && probed.score<beta) beta = probed.score;
-      if (alpha>=beta) return {score: probed.score, move: probed.best, timedOut:false};
-    }
-
     let cands = candidateMoves(color);
     if (color===BLACK) cands = cands.filter(m=>!forbiddenIfBlackMove(m.r,m.c).forbidden);
-    if (!cands.length) return {score:0, move:null, timedOut:false};
+    if (!cands.length) return {score: 0, move:null, timedOut:false};
 
-    const winners=[]; const others=[];
+    const winners = [] , others=[];
     for (const m of cands){ if (isWinningPlacement(color,m.r,m.c)) winners.push(m); else others.push(m); }
     others.sort((a,b)=> evalMove(color,b.r,b.c) - evalMove(color,a.r,a.c));
     cands = winners.concat(others);
 
-    let best=null; const origAlpha=alpha;
+    let best=null;
     for (const m of cands){
       board[m.r][m.c]=color;
-      const res = negamaxTT(opp, depth-1, -beta, -alpha, {r:m.r,c:m.c,color}, deadline);
+      const res = negamax(opp, depth-1, -beta, -alpha, {r:m.r,c:m.c,color}, deadline);
       board[m.r][m.c]=EMPTY;
       if (res.timedOut) return {score:0, move:best, timedOut:true};
       const val = -res.score;
       if (val>alpha){ alpha=val; best=m; }
       if (alpha>=beta) break;
     }
-    const entry={depth, score:alpha, best, flag:(alpha<=origAlpha?'UPPER': (alpha>=beta?'LOWER':'EXACT'))};
-    TT.set(key, entry);
     return {score: alpha, move: best, timedOut:false};
   }
 
   function staticEval(pov){
-    const sb = sideScore(BLACK); const sw = sideScore(WHITE); const base = sb - sw;
+    const sb = sideScore(BLACK);
+    const sw = sideScore(WHITE);
+    const base = sb - sw;
     return (pov===BLACK? 1 : -1) * base;
   }
+
   function sideScore(color){
-    let s=0; const opp=(color===BLACK)?WHITE:BLACK;
+    let s=0;
+    const opp = (color===BLACK)?WHITE:BLACK;
     for (let r=0;r<N;r++) for (let c=0;c<N;c++){
       if (board[r][c]===color){
         const len = maxLineThrough(r,c,color);
         const {fours, threes} = countThreatsAt(r,c,color);
-        if (color===BLACK){ s += (len>=4?1500:0) + 135*len + 6000*fours + 1700*threes; }
-        else { s += (len>=4?1700:0) + 145*len + 5200*fours + 1500*threes; }
+        if (color===BLACK){
+          s += (len>=4? 1400: 0) + 120*len;
+          s += 5500*fours + 1500*threes;
+        } else {
+          s += (len>=4? 1600: 0) + 130*len;
+          s += 5000*fours + 1400*threes;
+        }
       }
-      if (board[r][c]===opp){ const {threes} = countThreatsAt(r,c,opp); s += 450*threes; }
+      if (board[r][c]===opp){
+        const {threes} = countThreatsAt(r,c,opp);
+        s += 400 * threes; // favour positions that reduce opp free threes
+      }
     }
     return s;
   }
 
   function isWinningPlacement(color, r, c){
     if (board[r][c]!==EMPTY) return false;
-    board[r][c]=color; const len = maxLineThrough(r,c,color);
+    board[r][c]=color;
+    const len = maxLineThrough(r,c,color);
     let win = (color===BLACK? (len===5) : (len>=5));
-    if (color===BLACK && !win){ const chk = forbiddenIfBlackMove(r,c); if (chk.forbidden) win = false; }
-    board[r][c]=EMPTY; return win;
+    if (color===BLACK && !win){
+      const chk = forbiddenIfBlackMove(r,c);
+      if (chk.forbidden) win = false;
+    }
+    board[r][c]=EMPTY;
+    return win;
   }
 
-  function immediateWinningMovesAll(color){
-    const out=[];
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-      if (board[r][c]!==EMPTY) continue;
-      if (color===BLACK && forbiddenIfBlackMove(r,c).forbidden) continue;
-      if (isWinningPlacement(color, r, c)) out.push({r,c});
+  function immediateWinningMoves(color){
+    const out=[]; const cands = candidateMoves(color);
+    for (const m of cands){
+      if (color===BLACK && forbiddenIfBlackMove(m.r,m.c).forbidden) continue;
+      if (isWinningPlacement(color, m.r, m.c)) out.push(m);
     }
     return out;
   }
@@ -601,62 +563,128 @@ summary { cursor:pointer; }
     const res=[]; const set=new Set();
     for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]===EMPTY){
       if (opp===BLACK && forbiddenIfBlackMove(r,c).forbidden) continue;
-      board[r][c]=opp; const t = countThreatsAt(r,c,opp); const winsNext = immediateWinningMovesAll(opp).length; board[r][c]=EMPTY;
+      board[r][c]=opp;
+      const t = countThreatsAt(r,c,opp);
+      const winsNext = immediateWinningMoves(opp).length;
+      board[r][c]=EMPTY;
       if (t.threes>0 || winsNext>0){ const k=r+','+c; if(!set.has(k)){ set.add(k); res.push({r,c}); } }
     }
     return res;
   }
 
-  // ---- VCF ----
   function findVCFMove(attacker, maxDepth, ms){
-    const deadline = performance.now() + (ms||800); const opp=(attacker===BLACK)?WHITE:BLACK;
-    const winNow = immediateWinningMovesAll(attacker); if (winNow.length) return {move: winNow[0], line:[winNow[0]]};
+    const deadline = performance.now() + (ms||800);
+    const opp = (attacker===BLACK)?WHITE:BLACK;
+
+    const winNow = immediateWinningMoves(attacker);
+    if (winNow.length) return {move: winNow[0], line:[winNow[0]]};
+
     function attackMoves(){
-      const cands = candidateMoves(attacker); const good=[];
+      const cands = candidateMoves(attacker);
+      const good=[];
       for(const m of cands){
         if (attacker===BLACK && forbiddenIfBlackMove(m.r,m.c).forbidden) continue;
-        board[m.r][m.c]=attacker; const wins = immediateWinningMovesAll(attacker); board[m.r][m.c]=EMPTY;
+        board[m.r][m.c]=attacker;
+        const wins = immediateWinningMoves(attacker);
+        board[m.r][m.c]=EMPTY;
         if (wins.length>0) good.push({m, score: wins.length*10000 + evalMove(attacker,m.r,m.c)});
       }
-      good.sort((a,b)=>b.score - a.score); return good.map(g=>g.m);
+      good.sort((a,b)=>b.score-a.score);
+      return good.map(g=>g.m);
     }
+
     function dfs(depth){
-      if (performance.now()>deadline) return null; if (depth===0) return null;
+      if (performance.now()>deadline) return null;
+      if (depth===0) return null;
       const moves = attackMoves();
       for (const m of moves){
-        board[m.r][m.c]=attacker; const wins = immediateWinningMovesAll(attacker);
+        board[m.r][m.c]=attacker;
+        const wins = immediateWinningMoves(attacker);
         if (wins.length>=2){ board[m.r][m.c]=EMPTY; return [m]; }
         if (wins.length===0){ board[m.r][m.c]=EMPTY; continue; }
-        const block = wins[0]; if (opp===BLACK && forbiddenIfBlackMove(block.r,block.c).forbidden){ board[m.r][m.c]=EMPTY; return [m]; }
-        board[block.r][block.c]=opp; const cont = dfs(depth-1); board[block.r][block.c]=EMPTY; board[m.r][m.c]=EMPTY;
+        const block = wins[0];
+        if (opp===BLACK && forbiddenIfBlackMove(block.r,block.c).forbidden){ board[m.r][m.c]=EMPTY; return [m]; }
+        board[block.r][block.c]=opp;
+        const cont = dfs(depth-1);
+        board[block.r][block.c]=EMPTY;
+        board[m.r][m.c]=EMPTY;
         if (cont){ cont.unshift(m); return cont; }
-      } return null;
+      }
+      return null;
     }
-    for (let d=1; d<=maxDepth; d++){ const line = dfs(d); if (line) return {move: line[0], line}; if (performance.now()>deadline) break; }
+
+    for (let d=1; d<=maxDepth; d++){
+      const line = dfs(d);
+      if (line) return {move: line[0], line};
+      if (performance.now()>deadline) break;
+    }
     return null;
   }
 
-  // ---- VCT ----
-  function findVCTMove(attacker, maxDepth, ms){
-    const deadline = performance.now() + (ms||1000); const opp=(attacker===BLACK)?WHITE:BLACK;
-    const winNow = immediateWinningMovesAll(attacker); if (winNow.length) return {move: winNow[0], line:[winNow[0]]};
-    function makesFreeThree(m){ board[m.r][m.c]=attacker; const t=countThreatsAt(m.r,m.c,attacker); board[m.r][m.c]=EMPTY; return t.threes>0; }
-    function vctMoves(){ const c=candidateMoves(attacker).filter(m=> attacker!==BLACK || !forbiddenIfBlackMove(m.r,m.c).forbidden); const good=[]; for(const m of c){ if (makesFreeThree(m)) good.push({m,score:evalMove(attacker,m.r,m.c)}); } good.sort((a,b)=>b.score - a.score); return good.map(g=>g.m); }
-    function forcedBlock(){ const wins = immediateWinningMovesAll(attacker); if (!wins.length) return null; return wins[0]; }
-    function dfs(depth){
-      if (performance.now()>deadline) return null; if (depth===0) return null;
-      const moves=vctMoves();
-      for(const m of moves){
-        board[m.r][m.c]=attacker;
-        const vcf=findVCFMove(attacker, 6, 120);
-        if (vcf && vcf.move){ board[m.r][m.c]=EMPTY; return [m]; }
-        const blk = forcedBlock(); if (!blk){ board[m.r][m.c]=EMPTY; continue; }
-        if (opp===BLACK && forbiddenIfBlackMove(blk.r,blk.c).forbidden){ board[m.r][m.c]=EMPTY; return [m]; }
-        board[blk.r][blk.c]=opp; const cont=dfs(depth-1); board[blk.r][blk.c]=EMPTY; board[m.r][m.c]=EMPTY;
-        if (cont){ cont.unshift(m); return cont; }
-      } return null;
+  function evalMove(color, r, c){
+    const opp = (color===BLACK)?WHITE:BLACK;
+    if (board[r][c]!==EMPTY) return -1e9;
+    if (color===BLACK){ const chk = forbiddenIfBlackMove(r,c); if (chk.forbidden) return -1e9; }
+
+    board[r][c]=color;
+    const len = maxLineThrough(r,c,color);
+    const {fours, threes} = countThreatsAt(r,c,color);
+
+    let oppThreat = 0;
+    const oppCands = candidateMoves(opp);
+    for (const m of oppCands){
+      if (opp===BLACK && forbiddenIfBlackMove(m.r,m.c).forbidden) continue;
+      board[m.r][m.c]=opp; const l = maxLineThrough(m.r,m.c,opp); board[m.r][m.c]=EMPTY;
+      const win = (opp===BLACK? (l===5) : (l>=5));
+      if (win) { oppThreat += 1; }
     }
-    for (let d=1; d<=maxDepth; d++){ const line=dfs(d); if (line) return {move: line[0], line}; if (performance.now()>deadline) break; } return null;
+
+    const center = 7; const dist = Math.abs(r-center)+Math.abs(c-center);
+
+    let score = 0;
+    if (color===BLACK) {
+      score += 500* (len===4?1:0) + 80*len;
+      score += 12000*fours + 2600*threes;
+    } else {
+      score += 600* (len>=4?1:0) + 90*len;
+      score += 10000*fours + 2200*threes;
+    }
+    score += 40*(10 - Math.min(10, dist));
+    score -= 15000 * oppThreat;
+
+    board[r][c]=EMPTY;
+    return score;
+  }
+
+  function candidateMoves(color){
+    let hasStone=false; let minR=N, minC=N, maxR=-1, maxC=-1;
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]!==EMPTY){
+      hasStone=true; if (r<minR) minR=r; if (c<minC) minC=c; if (r>maxR) maxR=r; if (c>maxC) maxC=c;
+    }
+    const set = new Set(); const res=[];
+    if (!hasStone){ return [{r:7,c:7}]; }
+    minR=Math.max(0,minR-2); minC=Math.max(0,minC-2); maxR=Math.min(N-1,maxR+2); maxC=Math.min(N-1,maxC+2);
+    for (let r=minR;r<=maxR;r++){
+      for (let c=minC;c<=maxC;c++){
+        if (board[r][c]!==EMPTY) continue;
+        let near=false; for (let dr=-2; dr<=2 && !near; dr++) for (let dc=-2; dc<=2 && !near; dc++){
+          const rr=r+dr, cc=c+dc; if (inB(rr,cc) && board[rr][cc]!==EMPTY) near=true;
+        }
+        if (!near) continue;
+        const key=r+','+c; if (set.has(key)) continue; set.add(key);
+        res.push({r,c});
+      }
+    }
+    const center=7;
+    res.sort((a,b)=>{
+      const dlmA = lastMove? Math.abs(a.r-lastMove.r)+Math.abs(a.c-lastMove.c): 0;
+      const dlmB = lastMove? Math.abs(b.r-lastMove.r)+Math.abs(b.c-lastMove.c): 0;
+      if (dlmA!==dlmB) return dlmA-dlmB;
+      const da = Math.abs(a.r-center)+Math.abs(a.c-center);
+      const db = Math.abs(b.r-center)+Math.abs(b.c-center);
+      return da-db;
+    });
+    return res;
   }
 
   // ===== Wiring =====
@@ -667,6 +695,7 @@ summary { cursor:pointer; }
   sideSelect.addEventListener('change', ()=> reset());
   levelSelect.addEventListener('change', ()=> status(`AI level set to ${levelSelect.options[levelSelect.selectedIndex].text}.`));
 
+  // boot
   reset();
 })();
 </script>
