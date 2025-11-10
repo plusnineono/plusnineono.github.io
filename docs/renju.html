@@ -172,50 +172,41 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 </header>
 
 
-<div class="{=html}">
 <div class="controls">
-<div class="row">
-<pre><code>&lt;label&gt;Play as:&lt;/label&gt;
-&lt;select id="side-select"&gt;
-  &lt;option value="human-black"&gt;Black (forbidden moves apply)&lt;/option&gt;
-  &lt;option value="human-white" selected&gt;White&lt;/option&gt;
-&lt;/select&gt;
-&lt;label class="sp"&gt;AI level:&lt;/label&gt;
-&lt;select id="level-select"&gt;
-  &lt;option value="0"&gt;Fast&lt;/option&gt;
-  &lt;option value="1" selected&gt;Normal&lt;/option&gt;
-  &lt;option value="2"&gt;Strong&lt;/option&gt;
-&lt;/select&gt;
-&lt;button id="newgame"&gt;New Game&lt;/button&gt;
-&lt;button id="undo"&gt;Undo&lt;/button&gt;
-&lt;button id="aigo"&gt;AI Move&lt;/button&gt;</code></pre>
+  <div class="row">
+    <label>Play as:</label>
+    <select id="side-select">
+      <option value="human-black">Black (forbidden moves apply)</option>
+      <option value="human-white" selected="">White</option>
+    </select>
+    <label class="sp">AI level:</label>
+    <select id="level-select">
+      <option value="0">Fast</option>
+      <option value="1" selected="">Normal</option>
+      <option value="2">Strong</option>
+    </select>
+    <button id="newgame">New Game</button>
+    <button id="undo">Undo</button>
+    <button id="aigo">AI Move</button>
+  </div>
+  <div id="status">Loading…</div>
 </div>
-<div id="status">
-Loading…
-</div>
-</div>
+
 <div class="board-wrap">
-<canvas id="board" width="640" height="640" aria-label="Renju board" role="img">
-</canvas>
+  <canvas id="board" width="640" height="640" aria-label="Renju board" role="img"></canvas>
 </div>
+
 <div class="help">
-<details>
-<summary>
-Rules this page enforces
-</summary>
-<ul>
-<li>
-Board size: 15×15. Exactly 5-in-a-row wins for Black; ≥5 wins for White. Black may not win by overline (6+).
-</li>
-<li>
-Black forbidden moves: overline, double-three, double-four. If a legal move makes exactly five, Black wins even if it simultaneously forms threes/fours.
-</li>
-<li>
-Opening rules like Swap / Soosõrv are <em>not</em> enforced here.
-</li>
-</ul>
-</details>
+  <details>
+    <summary>Rules this page enforces</summary>
+    <ul>
+      <li>Board size: 15×15. Exactly 5-in-a-row wins for Black; ≥5 wins for White. Black may not win by overline (6+).</li>
+      <li>Black forbidden moves: overline, double-three, double-four. If a legal move makes exactly five, Black wins even if it simultaneously forms threes/fours.</li>
+      <li>Opening rules like Swap / Soosõrv are <em>not</em> enforced here.</li>
+    </ul>
+  </details>
 </div>
+
 <style>
 :root {
   --bg: #fafaf8; --grid: #c9a878; --star: #a07b3a; --black: #111; --white: #fafafa;
@@ -233,6 +224,7 @@ button:hover { box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
 .help { max-width:960px; margin: 0 auto 24px; color:#444; }
 summary { cursor:pointer; }
 </style>
+
 <script>
 (function(){
   const N = 15; // board size
@@ -412,11 +404,11 @@ summary { cursor:pointer; }
     let fours=0, threes=0;
     for (const [dr,dc] of dirs){
       const {s, idx} = lineStringAround(r,c,color, dr,dc);
-      // FOUR patterns (any single-move 5): xxxx., .xxxx, xxx.x, x.xxx, xx.xx, .xxxx.
+      // FOUR patterns (any single-move 5): xxxx\., \.xxxx, xxx\.x, x\.xxx, xx\.xx, \.xxxx\.
       const fourPats = [/xxxx\./g,/\.xxxx/g,/xxx\.x/g,/x\.xxx/g,/xx\.xx/g,/\.xxxx\./g];
       let hasFour=false; for (const re of fourPats){ let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length){ hasFour=true; break; } } if (hasFour) break; }
       if (hasFour) fours += 1;
-      // FREE THREE patterns: .xxx., .xx.x., .x.xx.
+      // FREE THREE patterns: \.xxx\., \.xx\.x\., \.x\.xx\.
       const threePats = [/\.xxx\./g,/\.xx\.x\./g,/\.x\.xx\./g];
       let local3=0; for (const re of threePats){ let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length) local3++; } }
       threes += local3;
@@ -603,7 +595,6 @@ summary { cursor:pointer; }
   reset();
 })();
 </script>
-</div>
 
 
 
