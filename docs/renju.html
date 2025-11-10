@@ -114,8 +114,8 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <span class="menu-text">Natural Languages</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="./renju.html" aria-current="page"> 
-<span class="menu-text">Renju</span></a>
+    <a class="nav-link" href="./renju_home.html"> 
+<span class="menu-text">2D Ising Model</span></a>
   </li>  
 </ul>
           </div> <!-- /navcollapse -->
@@ -364,14 +364,12 @@ summary { cursor:pointer; }
 
   function inB(r,c){ return r>=0&&r<N&&c>=0&&c<N; }
 
-  // ===== Forbidden move detection (approximate but strong) =====
+  // ===== Forbidden move detection (bug-fixed) =====
   function forbiddenIfBlackMove(r,c){
-    // simulate
     board[r][c]=BLACK;
     const len = maxLineThrough(r,c,BLACK);
-    if (len>5){ board[r][c]=EMPTY; return {forbidden:true, reason:'overline (6+ in a row)'}; }
+    if (len>5){ board[r][c]=EMPTY; return {forbidden:true, reason:'overline (6+)'}; }
     if (len===5){ board[r][c]=EMPTY; return {forbidden:false, reason:null}; }
-    // count double-fours and double-threes created involving the placed stone
     const {fours, threes} = countThreatsAt(r,c,BLACK);
     board[r][c]=EMPTY;
     if (fours>=2) return {forbidden:true, reason:'double-four'};
@@ -380,10 +378,8 @@ summary { cursor:pointer; }
   }
 
   function lineStringAround(r,c,color, dr,dc){
-    // build a 1D string with ., x(player), o(opponent) around (r,c)
-    const me = color, opp = (color===BLACK)?WHITE:BLACK;
+    const me = color;
     let cells=[]; let coords=[];
-    // go back up to 10
     let rr=r-10*dr, cc=c-10*dc; while(!inB(rr,cc)){ rr+=dr; cc+=dc; }
     for (; inB(rr,cc); rr+=dr,cc+=dc){
       coords.push([rr,cc]);
@@ -398,19 +394,20 @@ summary { cursor:pointer; }
     return {s, idx};
   }
 
+  // FIX: count at most one \"free three\" per direction to avoid false double-three
   function countThreatsAt(r,c,color){
     const dirs=[[1,0],[0,1],[1,1],[1,-1]];
     let fours=0, threes=0;
+    const fourPats = [/xxxx\./g,/\.xxxx/g,/xxx\.x/g,/x\.xxx/g,/xx\.xx/g,/\.xxxx\./g];
+    const threePats = [/\.xxx\./g,/\.xx\.x\./g,/\.x\.xx\./g];
     for (const [dr,dc] of dirs){
       const {s, idx} = lineStringAround(r,c,color, dr,dc);
-      // FOUR patterns (any single-move 5): xxxx., .xxxx, xxx.x, x.xxx, xx.xx, .xxxx.
-      const fourPats = [/xxxx\./g,/\.xxxx/g,/xxx\.x/g,/x\.xxx/g,/xx\.xx/g,/\.xxxx\./g];
-      let hasFour=false; for (const re of fourPats){ let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length){ hasFour=true; break; } } if (hasFour) break; }
-      if (hasFour) fours += 1;
-      // FREE THREE patterns: .xxx., .xx.x., .x.xx.
-      const threePats = [/\.xxx\./g,/\.xx\.x\./g,/\.x\.xx\./g];
-      let local3=0; for (const re of threePats){ let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length) local3++; } }
-      threes += local3;
+      let dirHasFour=false;
+      for (const re of fourPats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length){ dirHasFour=true; break; } } if (dirHasFour) break; }
+      if (dirHasFour) fours += 1;
+      let dirHasThree=false;
+      for (const re of threePats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length){ dirHasThree=true; break; } } if (dirHasThree) break; }
+      if (dirHasThree) threes += 1;
     }
     return {fours, threes};
   }
@@ -424,7 +421,7 @@ summary { cursor:pointer; }
     setTimeout(()=>{
       const me = aiPlays, opp = (me===BLACK)?WHITE:BLACK;
 
-      // 0) Must block opponent's immediate win
+      // Must block opponent immediate wins
       const oppWins = immediateWinningMoves(opp);
       if (oppWins.length){
         const blockers = candidateMoves(me).filter(m=> oppWins.some(w=>w.r===m.r && w.c===m.c))
@@ -432,13 +429,13 @@ summary { cursor:pointer; }
         if (blockers.length){ const best = pickBest(me, blockers); doMove(best.r, best.c, me); return; }
       }
 
-      // 1) Solver mode: try VCF winning line first
+      // Solver tries VCF first
       if (mode===1){
-        const vcf = findVCFMove(me, /*maxDepth*/8, /*ms*/ Math.floor(thinkMs*0.6));
+        const vcf = findVCFMove(me, 8, Math.floor(thinkMs*0.6));
         if (vcf && vcf.move){ doMove(vcf.move.r, vcf.move.c, me); return; }
       }
 
-      // 2) Strong defence vs opponent \"free threes\": preempt threatening squares
+      // Defensive pre-emption of opponent free threes
       const critical = criticalThreeSquares(opp);
       if (critical.length){
         const blocks = candidateMoves(me).filter(m=> critical.some(p=>p.r===m.r && p.c===m.c))
@@ -446,8 +443,13 @@ summary { cursor:pointer; }
         if (blocks.length){ const best = pickBest(me, blocks); doMove(best.r, best.c, me); return; }
       }
 
-      // 3) Fallback: timed negamax
-      const move = bestMoveTimed(me, thinkMs);
+      // Fallback: timed search, then greedy if timed out
+      let move = bestMoveTimed(me, thinkMs);
+      if (!move){
+        let cands = candidateMoves(me);
+        if (me===BLACK) cands = cands.filter(m=>!forbiddenIfBlackMove(m.r,m.c).forbidden);
+        if (cands.length) move = pickBest(me, cands);
+      }
       if (!move){ status('AI passes (no legal moves).'); turn = humanPlays; return; }
       doMove(move.r, move.c, me);
     }, 10);
@@ -535,6 +537,19 @@ summary { cursor:pointer; }
     return s;
   }
 
+  function isWinningPlacement(color, r, c){
+    if (board[r][c]!==EMPTY) return false;
+    board[r][c]=color;
+    const len = maxLineThrough(r,c,color);
+    let win = (color===BLACK? (len===5) : (len>=5));
+    if (color===BLACK && !win){
+      const chk = forbiddenIfBlackMove(r,c);
+      if (chk.forbidden) win = false;
+    }
+    board[r][c]=EMPTY;
+    return win;
+  }
+
   function immediateWinningMoves(color){
     const out=[]; const cands = candidateMoves(color);
     for (const m of cands){
@@ -544,21 +559,19 @@ summary { cursor:pointer; }
     return out;
   }
 
-  // Squares where opponent would create a strong free three on their move.
   function criticalThreeSquares(opp){
     const res=[]; const set=new Set();
     for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]===EMPTY){
-      if (opp===BLACK && forbiddenIfBlackMove(r,c).forbidden) continue; // black illegal threat doesn't count
+      if (opp===BLACK && forbiddenIfBlackMove(r,c).forbidden) continue;
       board[r][c]=opp;
-      const {threes} = countThreatsAt(r,c,opp);
-      const winsNext = immediateWinningMoves(opp).length; // after they make a three, do they have an immediate winning point?\n
+      const t = countThreatsAt(r,c,opp);
+      const winsNext = immediateWinningMoves(opp).length;
       board[r][c]=EMPTY;
-      if (threes>0 || winsNext>0){ const k=r+','+c; if(!set.has(k)){ set.add(k); res.push({r,c}); } }
+      if (t.threes>0 || winsNext>0){ const k=r+','+c; if(!set.has(k)){ set.add(k); res.push({r,c}); } }
     }
     return res;
   }
 
-  // ---- VCF threat-space search (Victory by Continuous Four) ----
   function findVCFMove(attacker, maxDepth, ms){
     const deadline = performance.now() + (ms||800);
     const opp = (attacker===BLACK)?WHITE:BLACK;
