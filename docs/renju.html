@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Renju Dojo 連珠道場 – Tasuku Ono</title>
+<title>Play Renju vs Computer (Responsive) – Tasuku Ono</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -79,7 +79,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 
 
 <link rel="stylesheet" href="styles.css">
-<meta name="twitter:title" content="Renju Dojo 連珠道場 – Tasuku Ono">
+<meta name="twitter:title" content="Play Renju vs Computer (Responsive) – Tasuku Ono">
 <meta name="twitter:creator" content="@PlusNineOnZero">
 <meta name="twitter:card" content="summary">
 </head>
@@ -128,7 +128,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Renju Dojo 連珠道場</li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Play Renju vs Computer (Responsive)</li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -155,7 +155,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Renju Dojo 連珠道場</h1>
+<h1 class="title">Play Renju vs Computer (Responsive)</h1>
 </div>
 
 
@@ -203,7 +203,18 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <style>
 :root { --bg:#fafaf8; --grid:#c9a878; --star:#a07b3a; }
 body { background: var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-.board-wrap { display:flex; justify-content:center; margin: 8px 0 24px; }
+.board-wrap { 
+  display:flex; justify-content:center; 
+  margin: 8px 0 24px; padding: 0 12px;
+  max-width: 100%;
+}
+/* Make the canvas responsive: scale down on small screens, keep square, avoid clipping */
+#board {
+  width: min(94vw, 640px);
+  height: auto;          /* keeps aspect ratio since height attribute is present */
+  max-width: 100%;
+  touch-action: manipulation; /* better mobile tap behavior */
+}
 .controls { max-width: 960px; margin: 0 auto 8px; padding: 8px 12px; }
 .controls .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .controls label { font-weight:600; }
@@ -211,7 +222,7 @@ body { background: var(--bg); font-family: system-ui, -apple-system, Segoe UI, R
 #status { margin-top: 6px; font-weight:600; }
 button, select { border:1px solid #ddd; border-radius:10px; padding:6px 10px; background:#fff; cursor:pointer; }
 button:hover { box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
-.help { max-width:960px; margin: 0 auto 24px; color:#444; }
+.help { max-width:960px; margin: 0 auto 24px; color:#444; padding: 0 12px; }
 summary { cursor:pointer; }
 </style>
 
@@ -220,7 +231,8 @@ summary { cursor:pointer; }
   const N = 15; const EMPTY=0, BLACK=1, WHITE=2;
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
-  const MARGIN = 32, SIZE = canvas.width, CELL = (SIZE - 2*MARGIN)/(N-1);
+  const SIZE = canvas.width;  // drawing buffer size (fixed), CSS scales responsively
+  const MARGIN = 32, CELL = (SIZE - 2*MARGIN)/(N-1);
   const STAR_PTS = [[3,3],[3,11],[7,7],[11,3],[11,11]];
   const sideSelect = document.getElementById('side-select');
   const statusEl = document.getElementById('status');
@@ -240,9 +252,11 @@ summary { cursor:pointer; }
   }
 
   function toXY(ev) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (ev.clientX - rect.left) * (canvas.width/rect.width);
-    const y = (ev.clientY - rect.top) * (canvas.height/rect.height);
+    const rect = canvas.getBoundingClientRect(); // CSS size
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (ev.clientX - rect.left) * scaleX;
+    const y = (ev.clientY - rect.top) * scaleY;
     let c = Math.round((x - MARGIN)/CELL);
     let r = Math.round((y - MARGIN)/CELL);
     if (r<0||r>=N||c<0||c>=N) return null;
@@ -508,7 +522,7 @@ summary { cursor:pointer; }
         let localBlocks = [];
         if (history.length && history[history.length-1].color===opp){
           const h = history[history.length-1];
-          localBlocks = localFreeThreeBlocksFrom(h.r, h.c, opp).filter(mm=> safeLegal(me, mm.r, mm.c));
+          localBlocks = localFreeThreeBlocksFrom(h.r, h.c, opp).filter(mm=> safeLegal(me, mm.r, mm.r));
         }
         if (localBlocks.length){
           clearTimeout(watchdog);
