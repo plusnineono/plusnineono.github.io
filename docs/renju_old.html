@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Renju Dojo 連珠道場 – Tasuku Ono</title>
+<title>Play Renju vs Computer (Responsive) – Tasuku Ono</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -79,7 +79,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 
 
 <link rel="stylesheet" href="styles.css">
-<meta name="twitter:title" content="Renju Dojo 連珠道場 – Tasuku Ono">
+<meta name="twitter:title" content="Play Renju vs Computer (Responsive) – Tasuku Ono">
 <meta name="twitter:creator" content="@PlusNineOnZero">
 <meta name="twitter:card" content="summary">
 </head>
@@ -128,7 +128,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Renju Dojo 連珠道場</li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Play Renju vs Computer (Responsive)</li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -155,7 +155,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Renju Dojo 連珠道場</h1>
+<h1 class="title">Play Renju vs Computer (Responsive)</h1>
 </div>
 
 
@@ -176,17 +176,11 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
   <div class="row">
     <label>Play as:</label>
     <select id="side-select">
-      <option value="human-black">Black (forbidden moves apply)</option>
-      <option value="human-white" selected="">White</option>
-    </select>
-    <label class="sp">AI level:</label>
-    <select id="level-select">
-      <option value="0" selected="">Easy</option>
-      <option value="1">Hard</option>
+      <option value="human-black" selected="">Black (forbidden moves apply)</option>
+      <option value="human-white">White</option>
     </select>
     <button id="newgame">New Game</button>
     <button id="undo">Undo</button>
-    <button id="aigo">AI Move</button>
   </div>
   <div id="status">Loading…</div>
 </div>
@@ -209,15 +203,26 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <style>
 :root { --bg:#fafaf8; --grid:#c9a878; --star:#a07b3a; }
 body { background: var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-.board-wrap { display:flex; justify-content:center; margin: 8px 0 24px; }
+.board-wrap { 
+  display:flex; justify-content:center; 
+  margin: 8px 0 24px; padding: 0 12px;
+  max-width: 100%;
+}
+/* Make the canvas responsive: scale down on small screens, keep square, avoid clipping */
+#board {
+  width: min(94vw, 640px);
+  height: auto;          /* keeps aspect ratio since height attribute is present */
+  max-width: 100%;
+  touch-action: manipulation; /* better mobile tap behavior */
+}
 .controls { max-width: 960px; margin: 0 auto 8px; padding: 8px 12px; }
 .controls .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .controls label { font-weight:600; }
-controls .sp { margin-left: 6px; }
+.controls .sp { margin-left: 6px; }
 #status { margin-top: 6px; font-weight:600; }
 button, select { border:1px solid #ddd; border-radius:10px; padding:6px 10px; background:#fff; cursor:pointer; }
 button:hover { box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
-.help { max-width:960px; margin: 0 auto 24px; color:#444; }
+.help { max-width:960px; margin: 0 auto 24px; color:#444; padding: 0 12px; }
 summary { cursor:pointer; }
 </style>
 
@@ -226,14 +231,13 @@ summary { cursor:pointer; }
   const N = 15; const EMPTY=0, BLACK=1, WHITE=2;
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
-  const MARGIN = 32, SIZE = canvas.width, CELL = (SIZE - 2*MARGIN)/(N-1);
+  const SIZE = canvas.width;  // drawing buffer size (fixed), CSS scales responsively
+  const MARGIN = 32, CELL = (SIZE - 2*MARGIN)/(N-1);
   const STAR_PTS = [[3,3],[3,11],[7,7],[11,3],[11,11]];
   const sideSelect = document.getElementById('side-select');
-  const levelSelect = document.getElementById('level-select');
   const statusEl = document.getElementById('status');
   const btnNew = document.getElementById('newgame');
   const btnUndo = document.getElementById('undo');
-  const btnAi = document.getElementById('aigo');
 
   let board, turn, history, winner, lastMove, humanPlays, aiPlays;
 
@@ -248,9 +252,11 @@ summary { cursor:pointer; }
   }
 
   function toXY(ev) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (ev.clientX - rect.left) * (canvas.width/rect.width);
-    const y = (ev.clientY - rect.top) * (canvas.height/rect.height);
+    const rect = canvas.getBoundingClientRect(); // CSS size
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (ev.clientX - rect.left) * scaleX;
+    const y = (ev.clientY - rect.top) * scaleY;
     let c = Math.round((x - MARGIN)/CELL);
     let r = Math.round((y - MARGIN)/CELL);
     if (r<0||r>=N||c<0||c>=N) return null;
@@ -361,6 +367,7 @@ summary { cursor:pointer; }
     return {fours, threes};
   }
 
+  // ---------- Helpers ----------
   function emptyCells(){
     const cells=[];
     for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]===EMPTY) cells.push({r,c});
@@ -381,7 +388,7 @@ summary { cursor:pointer; }
     return false;
   }
 
-  // Free-three detection now covers .xxx., .xx.x., .x.xx. in all directions (including diagonals)
+  // ---- Free-three detection (.xxx., .xx.x., .x.xx.) ----
   function localFreeThreeBlocksFrom(r,c, opp){
     const dirs=[[0,1],[1,0],[1,1],[1,-1]]; const blocks=[]; const seen=new Set();
     const re = /\.xxx\.|\.xx\.x\.|\.x\.xx\./g;
@@ -479,12 +486,12 @@ summary { cursor:pointer; }
     return color===WHITE || !forbiddenIfBlackMove(r,c).forbidden;
   }
 
+  // ===== AI: Hard only =====
   const TT = new Map();
 
   function aiMove(){
     if (winner || turn!==aiPlays) return;
-    const mode = parseInt(levelSelect.value,10)||0; // 0 Easy, 1 Hard
-    const thinkMs = (mode===0)? 260 : 1800;
+    const thinkMs = 1800; // hard
     status('Computer thinking…');
 
     const watchdog = setTimeout(()=>{
@@ -497,29 +504,31 @@ summary { cursor:pointer; }
       try {
         const me = aiPlays, opp = (me===BLACK)?WHITE:BLACK;
 
+        // Immediate win
         const myWin = immediateWinningMovesAll(me);
         if (myWin.length){
           const m = myWin.find(mm=> safeLegal(me, mm.r, mm.c)) || myWin[0];
           clearTimeout(watchdog); doMove(m.r, m.c, me); return;
         }
 
+        // Block opponent's immediate win
         const oppWins = immediateWinningMovesAll(opp);
         if (oppWins.length){
           const blockers = oppWins.filter(mm=> safeLegal(me, mm.r, mm.c));
           if (blockers.length){ clearTimeout(watchdog); doMove(blockers[0].r, blockers[0].c, me); return; }
         }
 
+        // Block free threes (local then global)
         let localBlocks = [];
         if (history.length && history[history.length-1].color===opp){
           const h = history[history.length-1];
-          localBlocks = localFreeThreeBlocksFrom(h.r, h.c, opp).filter(mm=> safeLegal(me, mm.r, mm.c));
+          localBlocks = localFreeThreeBlocksFrom(h.r, h.c, opp).filter(mm=> safeLegal(me, mm.r, mm.r));
         }
         if (localBlocks.length){
           clearTimeout(watchdog);
           localBlocks.sort((a,b)=> (Math.abs(a.r-7)+Math.abs(a.c-7)) - (Math.abs(b.r-7)+Math.abs(b.c-7)));
           doMove(localBlocks[0].r, localBlocks[0].c, me); return;
         }
-
         const blocks = currentFreeThreeBlocks(opp).filter(mm=> safeLegal(me, mm.r, mm.c));
         if (blocks.length){
           clearTimeout(watchdog);
@@ -527,13 +536,13 @@ summary { cursor:pointer; }
           doMove(blocks[0].r, blocks[0].c, me); return;
         }
 
-        if (mode===1){
-          const vct = findVCTMove(me, 6, Math.floor(thinkMs*0.5));
-          if (vct && vct.move && safeLegal(me, vct.move.r, vct.move.c)){ clearTimeout(watchdog); doMove(vct.move.r, vct.move.c, me); return; }
-          const vcf = findVCFMove(me, 8, Math.floor(thinkMs*0.3));
-          if (vcf && vcf.move && safeLegal(me, vcf.move.r, vcf.move.c)){ clearTimeout(watchdog); doMove(vcf.move.r, vcf.move.c, me); return; }
-        }
+        // VCT/VCF probes
+        const vct = findVCTMove(me, 6, Math.floor(thinkMs*0.5));
+        if (vct && vct.move && safeLegal(me, vct.move.r, vct.move.c)){ clearTimeout(watchdog); doMove(vct.move.r, vct.move.c, me); return; }
+        const vcf = findVCFMove(me, 8, Math.floor(thinkMs*0.3));
+        if (vcf && vcf.move && safeLegal(me, vcf.move.r, vcf.move.c)){ clearTimeout(watchdog); doMove(vcf.move.r, vcf.move.c, me); return; }
 
+        // Alpha-beta
         const move = bestMoveTimed(me, thinkMs);
         clearTimeout(watchdog);
         if (!move){
@@ -545,48 +554,12 @@ summary { cursor:pointer; }
       } catch (e){
         console.error('AI error:', e);
         clearTimeout(watchdog);
-        let cands = candidateMoves(aiPlays).filter(mm=> safeLegal(aiPlays, m.r, m.c));
+        let cands = candidateMoves(aiPlays).filter(mm=> safeLegal(aiPlays, mm.r, mm.c));
         const best = cands.length ? cands[0] : null;
         if (best) doMove(best.r, best.c, aiPlays);
         else { status('AI error; skipping move.'); turn = humanPlays; }
       }
     }, 10);
-  }
-
-  function staticEval(pov){
-    const sb = sideScore(BLACK); const sw = sideScore(WHITE); const base = sb - sw;
-    return (pov===BLACK? 1 : -1) * base;
-  }
-  function sideScore(color){
-    let s=0; const opp=(color===BLACK)?WHITE:BLACK;
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-      if (board[r][c]===color){
-        const len = maxLineThrough(r,c,color);
-        const {fours, threes} = countThreatsAt(r,c,color);
-        if (color===BLACK){ s += (len>=4?1500:0) + 135*len + 6000*fours + 1700*threes; }
-        else { s += (len>=4?1700:0) + 145*len + 5200*fours + 1500*threes; }
-      }
-      if (board[r][c]===opp){ const {threes} = countThreatsAt(r,c,opp); s += 450*threes; }
-    }
-    return s;
-  }
-
-  function isWinningPlacement(color, r, c){
-    if (board[r][c]!==EMPTY) return false;
-    board[r][c]=color; const len = maxLineThrough(r,c,color);
-    let win = (color===BLACK? (len===5) : (len>=5));
-    if (color===BLACK && !win){ const chk = forbiddenIfBlackMove(r,c); if (chk.forbidden) win = false; }
-    board[r][c]=EMPTY; return win;
-  }
-
-  function immediateWinningMovesAll(color){
-    const out=[];
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-      if (board[r][c]!==EMPTY) continue;
-      if (color===BLACK && forbiddenIfBlackMove(r,c).forbidden) continue;
-      if (isWinningPlacement(color, r, c)) out.push({r,c});
-    }
-    return out;
   }
 
   function bestMoveTimed(color, ms){
@@ -650,15 +623,47 @@ summary { cursor:pointer; }
     return {score: alpha, move: best, timedOut:false};
   }
 
+  function staticEval(pov){
+    const sb = sideScore(BLACK); const sw = sideScore(WHITE); const base = sb - sw;
+    return (pov===BLACK? 1 : -1) * base;
+  }
+  function sideScore(color){
+    let s=0; const opp=(color===BLACK)?WHITE:BLACK;
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+      if (board[r][c]===color){
+        const len = maxLineThrough(r,c,color);
+        const {fours, threes} = countThreatsAt(r,c,color);
+        if (color===BLACK){ s += (len>=4?1500:0) + 135*len + 6000*fours + 1700*threes; }
+        else { s += (len>=4?1700:0) + 145*len + 5200*fours + 1500*threes; }
+      }
+      if (board[r][c]===opp){ const {threes} = countThreatsAt(r,c,opp); s += 450*threes; }
+    }
+    return s;
+  }
+
+  function isWinningPlacement(color, r, c){
+    if (board[r][c]!==EMPTY) return false;
+    board[r][c]=color; const len = maxLineThrough(r,c,color);
+    let win = (color===BLACK? (len===5) : (len>=5));
+    if (color===BLACK && !win){ const chk = forbiddenIfBlackMove(r,c); if (chk.forbidden) win = false; }
+    board[r][c]=EMPTY; return win;
+  }
+
+  function immediateWinningMovesAll(color){
+    const out=[];
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+      if (board[r][c]!==EMPTY) continue;
+      if (color===BLACK && forbiddenIfBlackMove(r,c).forbidden) continue;
+      if (isWinningPlacement(color, r, c)) out.push({r,c});
+    }
+    return out;
+  }
+
+  // ===== Wiring =====
   canvas.addEventListener('click', onClick);
   btnNew.addEventListener('click', ()=> reset());
   btnUndo.addEventListener('click', ()=> undo());
-  btnAi.addEventListener('click', ()=> aiMove());
   sideSelect.addEventListener('change', ()=> reset());
-  levelSelect.addEventListener('change', ()=> {
-    const opt = levelSelect.options[levelSelect.selectedIndex];
-    status(`Mode set to ${opt ? opt.text : levelSelect.value}.`);
-  });
 
   reset();
 })();

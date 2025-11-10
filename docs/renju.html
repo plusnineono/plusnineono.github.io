@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Play Renju vs Computer (Responsive) – Tasuku Ono</title>
+<title>Play Renju vs Computer (Patched &amp; Responsive) – Tasuku Ono</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -79,7 +79,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 
 
 <link rel="stylesheet" href="styles.css">
-<meta name="twitter:title" content="Play Renju vs Computer (Responsive) – Tasuku Ono">
+<meta name="twitter:title" content="Play Renju vs Computer (Patched &amp; Responsive) – Tasuku Ono">
 <meta name="twitter:creator" content="@PlusNineOnZero">
 <meta name="twitter:card" content="summary">
 </head>
@@ -128,7 +128,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Play Renju vs Computer (Responsive)</li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Play Renju vs Computer (Patched &amp; Responsive)</li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -155,7 +155,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Play Renju vs Computer (Responsive)</h1>
+<h1 class="title">Play Renju vs Computer (Patched &amp; Responsive)</h1>
 </div>
 
 
@@ -182,48 +182,24 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
     <button id="newgame">New Game</button>
     <button id="undo">Undo</button>
   </div>
-  <div id="status">Loading…</div>
+  <div id="status">Your move…</div>
 </div>
 
 <div class="board-wrap">
   <canvas id="board" width="640" height="640" aria-label="Renju board" role="img"></canvas>
 </div>
 
-<div class="help">
-  <details>
-    <summary>Rules this page enforces</summary>
-    <ul>
-      <li>Board size: 15×15. Exactly 5-in-a-row wins for Black; ≥5 wins for White. Black may not win by overline (6+).</li>
-      <li>Black forbidden moves: overline, double-three, double-four. If a legal move makes exactly five, Black wins even if it simultaneously forms threes/fours.</li>
-      <li>Opening rules like Swap / Soosõrv are <em>not</em> enforced here.</li>
-    </ul>
-  </details>
-</div>
-
 <style>
 :root { --bg:#fafaf8; --grid:#c9a878; --star:#a07b3a; }
 body { background: var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-.board-wrap { 
-  display:flex; justify-content:center; 
-  margin: 8px 0 24px; padding: 0 12px;
-  max-width: 100%;
-}
-/* Make the canvas responsive: scale down on small screens, keep square, avoid clipping */
-#board {
-  width: min(94vw, 640px);
-  height: auto;          /* keeps aspect ratio since height attribute is present */
-  max-width: 100%;
-  touch-action: manipulation; /* better mobile tap behavior */
-}
-.controls { max-width: 960px; margin: 0 auto 8px; padding: 8px 12px; }
-.controls .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.controls label { font-weight:600; }
-.controls .sp { margin-left: 6px; }
-#status { margin-top: 6px; font-weight:600; }
-button, select { border:1px solid #ddd; border-radius:10px; padding:6px 10px; background:#fff; cursor:pointer; }
-button:hover { box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
-.help { max-width:960px; margin: 0 auto 24px; color:#444; padding: 0 12px; }
-summary { cursor:pointer; }
+.board-wrap{display:flex;justify-content:center;margin:8px 0 24px;padding:0 12px;max-width:100%;}
+#board{width:min(94vw,640px);height:auto;max-width:100%;touch-action:manipulation;}
+.controls{max-width:960px;margin:0 auto 8px;padding:8px 12px;}
+.controls .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.controls label{font-weight:600;}
+#status{margin-top:6px;font-weight:600;}
+button,select{border:1px solid #ddd;border-radius:10px;padding:6px 10px;background:#fff;cursor:pointer;}
+button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
 </style>
 
 <script>
@@ -231,7 +207,7 @@ summary { cursor:pointer; }
   const N = 15; const EMPTY=0, BLACK=1, WHITE=2;
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
-  const SIZE = canvas.width;  // drawing buffer size (fixed), CSS scales responsively
+  const SIZE = canvas.width;
   const MARGIN = 32, CELL = (SIZE - 2*MARGIN)/(N-1);
   const STAR_PTS = [[3,3],[3,11],[7,7],[11,3],[11,11]];
   const sideSelect = document.getElementById('side-select');
@@ -245,14 +221,14 @@ summary { cursor:pointer; }
     board = Array.from({length:N}, ()=>Array(N).fill(EMPTY));
     history = []; winner = null; lastMove = null; turn = BLACK;
     humanPlays = sideSelect.value === 'human-black' ? BLACK : WHITE;
-    aiPlays = humanPlays===BLACK? WHITE : BLACK;
+    aiPlays = (humanPlays===BLACK) ? WHITE : BLACK;
     draw();
-    status(`New game. You are ${humanPlays===BLACK?'Black':'White'}. ${humanPlays===WHITE?'Computer (Black) to move.':'Your move.'}`);
+    status(`New game. You are ${humanPlays===BLACK?'Black':'White'}. ${humanPlays===WHITE?'Computer (Black) to move.':'Your move…'}`);
     if (aiPlays===BLACK) aiMove();
   }
 
-  function toXY(ev) {
-    const rect = canvas.getBoundingClientRect(); // CSS size
+  function toXY(ev){
+    const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const x = (ev.clientX - rect.left) * scaleX;
@@ -270,14 +246,8 @@ summary { cursor:pointer; }
     ctx.clearRect(0,0,SIZE,SIZE);
     ctx.fillStyle = '#f2e5c7'; ctx.fillRect(0,0,SIZE,SIZE);
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid')||'#c9a878'; ctx.lineWidth = 1;
-    for (let i=0;i<N;i++){
-      const p = MARGIN + i*CELL;
-      ctx.beginPath(); ctx.moveTo(MARGIN, p); ctx.lineTo(SIZE-MARGIN, p); ctx.stroke();
-    }
-    for (let i=0;i<N;i++){
-      const p = MARGIN + i*CELL;
-      ctx.beginPath(); ctx.moveTo(p, MARGIN); ctx.lineTo(p, SIZE-MARGIN); ctx.stroke();
-    }
+    for (let i=0;i<N;i++){ const p = MARGIN + i*CELL; ctx.beginPath(); ctx.moveTo(MARGIN, p); ctx.lineTo(SIZE-MARGIN, p); ctx.stroke(); }
+    for (let i=0;i<N;i++){ const p = MARGIN + i*CELL; ctx.beginPath(); ctx.moveTo(p, MARGIN); ctx.lineTo(p, SIZE-MARGIN); ctx.stroke(); }
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--star')||'#a07b3a';
     STAR_PTS.forEach(([r,c])=>{ const x = MARGIN + c*CELL, y = MARGIN + r*CELL; ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); });
     for (let r=0;r<N;r++) for (let c=0;c<N;c++){ if (board[r][c]) drawStone(r,c,board[r][c]); }
@@ -291,14 +261,25 @@ summary { cursor:pointer; }
     ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.stroke();
   }
   function status(msg){ statusEl.textContent = msg; }
-  function onClick(ev){ if (winner) return; const pos = toXY(ev); if (!pos) return; humanTryMove(pos.r,pos.c); }
+  canvas.addEventListener('click', ev => { if (!winner){ const pos = toXY(ev); if (pos) humanTryMove(pos.r,pos.c); }});
+
+  // ---- Safe placement helpers ----
+  function placeIfLegal(color, r, c){
+    if (!inB(r,c) || board[r][c] !== EMPTY) return false;
+    if (color === BLACK){
+      const chk = forbiddenIfBlackMove(r,c);
+      if (chk.forbidden) return false;
+    }
+    doMove(r,c,color);
+    return true;
+  }
 
   function humanTryMove(r,c){
-    if (board[r][c]!==EMPTY) return;
     if (turn !== humanPlays) return;
-    const forb = (humanPlays===BLACK) ? forbiddenIfBlackMove(r,c) : null;
-    if (forb && forb.forbidden){ status(`Illegal for Black: ${forb.reason}. Try another move.`); return; }
-    doMove(r,c,humanPlays);
+    if (!placeIfLegal(humanPlays, r, c)){
+      status(humanPlays===BLACK ? 'Illegal for Black or occupied; try another.' : 'Occupied; try another.');
+      return;
+    }
     if (!winner) aiMove();
   }
 
@@ -311,7 +292,14 @@ summary { cursor:pointer; }
     status(winner ? `${winner===BLACK?'Black':'White'} wins!` : `${turn===humanPlays? 'Your' : 'Computer'} move…`);
   }
 
-  function undo(){ if (!history.length || winner) return; const steps = (history.length>=2)?2:1; for (let i=0;i<steps;i++){ const m=history.pop(); board[m.r][m.c]=EMPTY; } winner=null; lastMove=history[history.length-1]||null; turn=BLACK; if (history.length){ const last=history[history.length-1]; turn=(last.color===BLACK)?WHITE:BLACK; } draw(); status('Undid.'); }
+  function undo(){
+    if (!history.length || winner) return;
+    const steps = (history.length>=2)?2:1;
+    for (let i=0;i<steps;i++){ const m=history.pop(); board[m.r][m.c]=EMPTY; }
+    winner=null; lastMove=history[history.length-1]||null; turn=BLACK;
+    if (history.length){ const last=history[history.length-1]; turn=(last.color===BLACK)?WHITE:BLACK; }
+    draw(); status('Undid.');
+  }
 
   function maxLineThrough(r,c,color){
     let best=1; const dirs=[[1,0],[0,1],[1,1],[1,-1]];
@@ -354,25 +342,21 @@ summary { cursor:pointer; }
 
   function countThreatsAt(r,c,color){
     const dirs=[[1,0],[0,1],[1,1],[1,-1]]; let fours=0, threes=0;
-    const fourPats=[/xxxx\./g,/\.xxxx/g,/xxx\.x/g,/x\.xxx/g,/xx\.xx/g,/\.xxxx\./g];
-    const threePats=[/\.xxx\./g,/\.xx\.x\./g,/\.x\.xx\./g];
+    const fourPats  = [/\.xxxx\./g, /xxxx\./g, /\.xxxx/g, /xxx\.x/g, /x\.xxx/g, /xx\.xx/g];
+    const threePats = [/\.xxx\./g, /\.xx\.x\./g, /\.x\.xx\./g];
     for (const [dr,dc] of dirs){
       const {s, idx} = lineStringAround(r,c,color, dr,dc);
-      let dirHasFour=false, dirHasThree=false;
-      for (const re of fourPats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx<m.index+m[0].length){ dirHasFour=true; break; } } if (dirHasFour) break; }
-      if (dirHasFour) fours += 1;
-      for (const re of threePats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx<m.index+m[0].length){ dirHasThree=true; break; } } if (dirHasThree) break; }
-      if (dirHasThree) threes += 1;
+      let has4=false;
+      for (const re of fourPats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx<m.index+m[0].length){ has4=true; break; } } if (has4) break; }
+      if (has4){ fours++; continue; }
+      let has3=false;
+      for (const re of threePats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx<m.index+m[0].length){ has3=true; break; } } if (has3) break; }
+      if (has3) threes++;
     }
     return {fours, threes};
   }
 
-  // ---------- Helpers ----------
-  function emptyCells(){
-    const cells=[];
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]===EMPTY) cells.push({r,c});
-    return cells;
-  }
+  function emptyCells(){ const cells=[]; for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]===EMPTY) cells.push({r,c}); return cells; }
   function hasNeighbor(r,c,dist){
     for (let dr=-dist; dr<=dist; dr++){
       for (let dc=-dist; dc<=dist; dc++){
@@ -383,12 +367,8 @@ summary { cursor:pointer; }
     }
     return false;
   }
-  function stonesPlaced(){
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]!==EMPTY) return true;
-    return false;
-  }
+  function stonesPlaced(){ for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]!==EMPTY) return true; return false; }
 
-  // ---- Free-three detection (.xxx., .xx.x., .x.xx.) ----
   function localFreeThreeBlocksFrom(r,c, opp){
     const dirs=[[0,1],[1,0],[1,1],[1,-1]]; const blocks=[]; const seen=new Set();
     const re = /\.xxx\.|\.xx\.x\.|\.x\.xx\./g;
@@ -414,12 +394,11 @@ summary { cursor:pointer; }
 
   function currentFreeThreeBlocks(opp){
     const blocks=[]; const seen=new Set();
-    const dirs=[[0,1],[1,0],[1,1],[1,-1]];
     const re = /\.xxx\.|\.xx\.x\.|\.x\.xx\./g;
     function considerLine(r0,c0,dr,dc){
-      let r=r0, c=c0; const coords=[]; const chars=[];
+      let r=r0, c=c0; const coords=[], chars=[];
       while (inB(r,c)){ coords.push([r,c]); const v=board[r][c]; chars.push(v===0?'.':(v===opp?'x':'o')); r+=dr; c+=dc; }
-      const s = chars.join(''); re.lastIndex = 0; let m;
+      const s = chars.join(''); re.lastIndex=0; let m;
       while((m=re.exec(s))){
         const start=m.index, pat=m[0]; const cand=[];
         if (pat === '.xxx.') { cand.push(coords[start], coords[start+4]); }
@@ -438,18 +417,6 @@ summary { cursor:pointer; }
     for (let k=0;k<N;k++) considerLine(k,0,-1,1);
     for (let k=1;k<N;k++) considerLine(N-1,k,-1,1);
     return blocks;
-  }
-
-  function createsOpenFour(color, r, c){
-    board[r][c]=color;
-    const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-    let ok=false;
-    for (const [dr,dc] of dirs){
-      const {s} = lineStringAround(r,c,color, dr,dc);
-      if (/\.(xxxx)\./.test(s)) { ok=true; break; }
-    }
-    board[r][c]=EMPTY;
-    return ok;
   }
 
   function evalMove(color, r, c){
@@ -483,81 +450,56 @@ summary { cursor:pointer; }
   }
 
   function safeLegal(color, r, c){
+    if (board[r][c] !== EMPTY) return false;
     return color===WHITE || !forbiddenIfBlackMove(r,c).forbidden;
   }
 
-  // ===== AI: Hard only =====
   const TT = new Map();
 
   function aiMove(){
     if (winner || turn!==aiPlays) return;
-    const thinkMs = 1800; // hard
+    const thinkMs = 1800;
     status('Computer thinking…');
 
     const watchdog = setTimeout(()=>{
-      let cands = candidateMoves(aiPlays).filter(m=> safeLegal(aiPlays, m.r, m.c));
-      const best = cands.length ? cands[0] : null;
-      if (turn===aiPlays && best){ doMove(best.r, best.c, aiPlays); }
+      const cands = candidateMoves(aiPlays).filter(m=> safeLegal(aiPlays, m.r, m.c));
+      for (const m of cands){ if (placeIfLegal(aiPlays, m.r, m.c)) return; }
     }, thinkMs + 700);
 
     setTimeout(()=>{
       try {
         const me = aiPlays, opp = (me===BLACK)?WHITE:BLACK;
 
-        // Immediate win
         const myWin = immediateWinningMovesAll(me);
-        if (myWin.length){
-          const m = myWin.find(mm=> safeLegal(me, mm.r, mm.c)) || myWin[0];
-          clearTimeout(watchdog); doMove(m.r, m.c, me); return;
-        }
+        for (const m of myWin){ if (placeIfLegal(me, m.r, m.c)){ clearTimeout(watchdog); return; } }
 
-        // Block opponent's immediate win
         const oppWins = immediateWinningMovesAll(opp);
-        if (oppWins.length){
-          const blockers = oppWins.filter(mm=> safeLegal(me, mm.r, mm.c));
-          if (blockers.length){ clearTimeout(watchdog); doMove(blockers[0].r, blockers[0].c, me); return; }
-        }
+        const blockers = oppWins.filter(mm=> safeLegal(me, mm.r, mm.c));
+        for (const m of blockers){ if (placeIfLegal(me, m.r, m.c)){ clearTimeout(watchdog); return; } }
 
-        // Block free threes (local then global)
-        let localBlocks = [];
         if (history.length && history[history.length-1].color===opp){
           const h = history[history.length-1];
-          localBlocks = localFreeThreeBlocksFrom(h.r, h.c, opp).filter(mm=> safeLegal(me, mm.r, mm.r));
-        }
-        if (localBlocks.length){
-          clearTimeout(watchdog);
+          let localBlocks = localFreeThreeBlocksFrom(h.r, h.c, opp).filter(mm => safeLegal(me, mm.r, mm.c));
           localBlocks.sort((a,b)=> (Math.abs(a.r-7)+Math.abs(a.c-7)) - (Math.abs(b.r-7)+Math.abs(b.c-7)));
-          doMove(localBlocks[0].r, localBlocks[0].c, me); return;
+          for (const m of localBlocks){ if (placeIfLegal(me, m.r, m.c)){ clearTimeout(watchdog); return; } }
         }
-        const blocks = currentFreeThreeBlocks(opp).filter(mm=> safeLegal(me, mm.r, mm.c));
-        if (blocks.length){
-          clearTimeout(watchdog);
-          blocks.sort((a,b)=> (Math.abs(a.r-7)+Math.abs(a.c-7)) - (Math.abs(b.r-7)+Math.abs(b.c-7)));
-          doMove(blocks[0].r, blocks[0].c, me); return;
-        }
+        let blocks = currentFreeThreeBlocks(opp).filter(mm => safeLegal(me, mm.r, mm.c));
+        blocks.sort((a,b)=> (Math.abs(a.r-7)+Math.abs(a.c-7)) - (Math.abs(b.r-7)+Math.abs(b.c-7)));
+        for (const m of blocks){ if (placeIfLegal(me, m.r, m.c)){ clearTimeout(watchdog); return; } }
 
-        // VCT/VCF probes
-        const vct = findVCTMove(me, 6, Math.floor(thinkMs*0.5));
-        if (vct && vct.move && safeLegal(me, vct.move.r, vct.move.c)){ clearTimeout(watchdog); doMove(vct.move.r, vct.move.c, me); return; }
-        const vcf = findVCFMove(me, 8, Math.floor(thinkMs*0.3));
-        if (vcf && vcf.move && safeLegal(me, vcf.move.r, vcf.move.c)){ clearTimeout(watchdog); doMove(vcf.move.r, vcf.move.c, me); return; }
-
-        // Alpha-beta
         const move = bestMoveTimed(me, thinkMs);
         clearTimeout(watchdog);
-        if (!move){
-          let cands = candidateMoves(me).filter(mm=> safeLegal(me, mm.r, mm.c));
-          if (cands.length){ doMove(cands[0].r, cands[0].c, me); return; }
-          status('AI passes (no legal moves).'); turn = humanPlays; return;
-        }
-        doMove(move.r, move.c, me);
-      } catch (e){
+        if (move && placeIfLegal(me, move.r, move.c)) return;
+
+        const cands = candidateMoves(me).filter(mm=> safeLegal(me, mm.r, mm.c));
+        for (const m of cands){ if (placeIfLegal(me, m.r, m.c)) return; }
+        status('AI passes (no legal moves).'); turn = humanPlays;
+      } catch(e){
         console.error('AI error:', e);
         clearTimeout(watchdog);
-        let cands = candidateMoves(aiPlays).filter(mm=> safeLegal(aiPlays, mm.r, mm.c));
-        const best = cands.length ? cands[0] : null;
-        if (best) doMove(best.r, best.c, aiPlays);
-        else { status('AI error; skipping move.'); turn = humanPlays; }
+        const cands = candidateMoves(aiPlays).filter(mm=> safeLegal(aiPlays, mm.r, mm.c));
+        for (const m of cands){ if (placeIfLegal(aiPlays, m.r, m.c)) return; }
+        status('AI error; skipping move.'); turn = humanPlays;
       }
     }, 10);
   }
@@ -640,7 +582,6 @@ summary { cursor:pointer; }
     }
     return s;
   }
-
   function isWinningPlacement(color, r, c){
     if (board[r][c]!==EMPTY) return false;
     board[r][c]=color; const len = maxLineThrough(r,c,color);
@@ -648,7 +589,6 @@ summary { cursor:pointer; }
     if (color===BLACK && !win){ const chk = forbiddenIfBlackMove(r,c); if (chk.forbidden) win = false; }
     board[r][c]=EMPTY; return win;
   }
-
   function immediateWinningMovesAll(color){
     const out=[];
     for (let r=0;r<N;r++) for (let c=0;c<N;c++){
@@ -659,11 +599,9 @@ summary { cursor:pointer; }
     return out;
   }
 
-  // ===== Wiring =====
-  canvas.addEventListener('click', onClick);
-  btnNew.addEventListener('click', ()=> reset());
-  btnUndo.addEventListener('click', ()=> undo());
-  sideSelect.addEventListener('change', ()=> reset());
+  btnNew.addEventListener('click', reset);
+  btnUndo.addEventListener('click', undo);
+  sideSelect.addEventListener('change', reset);
 
   reset();
 })();
