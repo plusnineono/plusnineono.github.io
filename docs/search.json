@@ -4,7 +4,7 @@
     "href": "renju.html",
     "title": "Play Renju vs Computer",
     "section": "",
-    "text": "Play as:\n    \n      Black (forbidden moves apply)\n      White\n    \n    AI level:\n    \n      Easy\n      Hard\n    \n    New Game\n    Undo\n    AI Move\n  \n  Loading…\n\n\n\n  \n\n\n\n  \n    Rules this page enforces\n    \n      Board size: 15×15. Exactly 5-in-a-row wins for Black; ≥5 wins for White. Black may not win by overline (6+).\n      Black forbidden moves: overline, double-three, double-four. If a legal move makes exactly five, Black wins even if it simultaneously forms threes/fours.\n      Opening rules like Swap / Soosõrv are not enforced here."
+    "text": "Play as:\n    \n      Black (forbidden moves apply)\n      White\n    \n    New Game\n    Undo\n  \n  Loading…\n\n\n\n  \n\n\n\n  \n    Rules this page enforces\n    \n      Board size: 15×15. Exactly 5-in-a-row wins for Black; ≥5 wins for White. Black may not win by overline (6+).\n      Black forbidden moves: overline, double-three, double-four. If a legal move makes exactly five, Black wins even if it simultaneously forms threes/fours.\n      Opening rules like Swap / Soosõrv are not enforced here."
   },
   {
     "objectID": "impressionism.html",
@@ -44,9 +44,9 @@
   {
     "objectID": "renju_old.html",
     "href": "renju_old.html",
-    "title": "Play Renju vs Computer",
+    "title": "Renju Dojo 連珠道場",
     "section": "",
-    "text": "Play as:\n    \n      Black (forbidden moves apply)\n      White\n    \n    AI level:\n    \n      Quick\n      Solver\n    \n    New Game\n    Undo\n    AI Move\n  \n  Loading…\n\n\n\n  \n\n\n\n  \n    Rules this page enforces\n    \n      Board size: 15×15. Exactly 5-in-a-row wins for Black; ≥5 wins for White. Black may not win by overline (6+).\n      Black forbidden moves: overline, double-three, double-four. If a legal move makes exactly five, Black wins even if it simultaneously forms threes/fours.\n      Opening rules like Swap / Soosõrv are not enforced here."
+    "text": "Play as:\n    \n      Black (forbidden moves apply)\n      White\n    \n    AI level:\n    \n      Easy\n      Hard\n    \n    New Game\n    Undo\n    AI Move\n  \n  Loading…\n\n\n\n  \n\n\n\n  \n    Rules this page enforces\n    \n      Board size: 15×15. Exactly 5-in-a-row wins for Black; ≥5 wins for White. Black may not win by overline (6+).\n      Black forbidden moves: overline, double-three, double-four. If a legal move makes exactly five, Black wins even if it simultaneously forms threes/fours.\n      Opening rules like Swap / Soosõrv are not enforced here."
   },
   {
     "objectID": "cambridge.html",
