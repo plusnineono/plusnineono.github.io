@@ -1,0 +1,38 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Tasuku Ono"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: publications.qmd
+        text: Publications
+      - href: natural-languages.qmd
+        text: Natural Languages
+      - href: renju.qmd
+        text: Renju
+    # background: rgb(235, 130, 53)
+  sidebar:
+    search: true
+
+  twitter-card:
+    creator: "@PlusNineOnZero"
+  google-analytics: "G-ZBV5W7QD1W"
+
+format:
+  html:
+    theme: cosmo #sandstone
+    css: styles.css
+    toc: true
+    linkcolor: rgb(71, 113, 154)
+    smooth-scroll: true
+    sanitize: false   # <<< important so the HTML/JS in renju.qmd is NOT escaped
+
+crossref:
+  custom:
+    - kind: float
+      reference-prefix: Theme
+      key: theme
