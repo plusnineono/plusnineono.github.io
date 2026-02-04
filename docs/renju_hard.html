@@ -216,6 +216,27 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
   const btnNew=document.getElementById('newgame');
   const btnUndo=document.getElementById('undo');
 
+  // Weights for the evaluation function.
+  // These can be tuned using the accompanying Python training script.
+  const WEIGHTS = {
+    win: 1e7,
+    // Dynamic evaluation (evalMove)
+    eval: {
+      len: 155,
+      fours: 5867,
+      threes: 1951,
+      center: 34,
+      openFour: 6914,
+      oppF3: 1500
+    },
+    // Static evaluation (sideScore)
+    static: {
+      black: { len4: 1605, len: 164, fours: 6680, threes: 2186 },
+      white: { len4: 2160, len: 176, fours: 5521, threes: 1806 },
+      oppThrees: 600
+    }
+  };
+
   let board, turn, history, winner, lastMove, humanPlays, aiPlays;
 
   function reset(){
@@ -342,10 +363,32 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     for(const [dr,dc] of D){
       const {s,idx}=lineStringAround(r,c,color,dr,dc);
       let has4=false;
-      for(const re of F4){ re.lastIndex=0; let m; while((m=re.exec(s))){ if(m.index<=idx && idx<m.index+m[0].length){ has4=true; break; } } if(has4) break; }
+      for(const re of F4){ 
+        re.lastIndex=0; let m; 
+        while((m=re.exec(s))){ 
+          if(m.index<=idx && idx<m.index+m[0].length){ has4=true; break; } 
+        } 
+        if(has4) break; 
+      }
       if (has4){ fours++; continue; }
       let has3=false;
-      for(const re of F3){ re.lastIndex=0; let m; while((m=re.exec(s))){ if(m.index<=idx && idx<m.index+m[0].length){ has3=true; break; } } if(has3) break; }
+      for(const re of F3){ 
+        re.lastIndex=0; let m; 
+        while((m=re.exec(s))){ 
+          if(m.index<=idx && idx<m.index+m[0].length){
+            // Strict Renju Rule: A Three must be able to become an Open Four.
+            // An Open Four requires 6 spaces (e.g. .xxxx.).
+            // The regex matches 5 chars (e.g. .xxx.). We need one more empty space on either side.
+            // Check if s has space before match or after match.
+            const before = m.index > 0 && s[m.index-1] === '.';
+            const after = m.index + m[0].length < s.length && s[m.index + m[0].length] === '.';
+            if (before || after) {
+              has3=true; break; 
+            }
+          } 
+        } 
+        if(has3) break; 
+      }
       if (has3) threes++;
     }
     return {fours,threes};
@@ -423,12 +466,16 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     const t=countThreatsAt(r,c,color);
     const opp=(color===BLACK)?WHITE:BLACK;
     let sc=0;
-    if ((color===BLACK && len===5) || (color===WHITE && len>=5)) sc+=1e7;
-    sc += 170*len + 6500*t.fours + 2100*t.threes;
-    const dx=Math.abs(c-7), dy=Math.abs(r-7); sc += 35*(7-Math.max(dx,dy));
-    if (createsOpenFour(color,r,c)) sc += 5000;
+    if ((color===BLACK && len===5) || (color===WHITE && len>=5)) sc+=WEIGHTS.win;
+    sc += WEIGHTS.eval.len*len + WEIGHTS.eval.fours*t.fours + WEIGHTS.eval.threes*t.fours; // Note: t.threes logic in original was t.threes, assuming typo in my read or original code. Correcting to t.threes.
+    // Correction: The original code had 2100*t.threes.
+    sc = 0; // Reset to be clean
+    if ((color===BLACK && len===5) || (color===WHITE && len>=5)) sc+=WEIGHTS.win;
+    sc += WEIGHTS.eval.len*len + WEIGHTS.eval.fours*t.fours + WEIGHTS.eval.threes*t.threes;
+    const dx=Math.abs(c-7), dy=Math.abs(r-7); sc += WEIGHTS.eval.center*(7-Math.max(dx,dy));
+    if (createsOpenFour(color,r,c)) sc += WEIGHTS.eval.openFour;
     const oppF3 = currentFreeThreeFor(opp).length;
-    sc -= 1500*oppF3;
+    sc -= WEIGHTS.eval.oppF3*oppF3;
     board[r][c]=EMPTY;
     return sc;
   }
@@ -496,10 +543,10 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
       if(board[r][c]===color){
         const len=maxLine(r,c,color);
         const t=countThreatsAt(r,c,color);
-        if(color===BLACK){ s+=(len>=4?1800:0)+150*len+7000*t.fours+2200*t.threes; }
-        else { s+=(len>=4?2000:0)+160*len+6000*t.fours+1850*t.threes; }
+        if(color===BLACK){ s+=(len>=4?WEIGHTS.static.black.len4:0)+WEIGHTS.static.black.len*len+WEIGHTS.static.black.fours*t.fours+WEIGHTS.static.black.threes*t.threes; }
+        else { s+=(len>=4?WEIGHTS.static.white.len4:0)+WEIGHTS.static.white.len*len+WEIGHTS.static.white.fours*t.fours+WEIGHTS.static.white.threes*t.threes; }
       }
-      if(board[r][c]===opp){ const t=countThreatsAt(r,c,opp); s+=600*t.threes; }
+      if(board[r][c]===opp){ const t=countThreatsAt(r,c,opp); s+=WEIGHTS.static.oppThrees*t.threes; }
     }
     return s;
   }
