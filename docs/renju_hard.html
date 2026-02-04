@@ -222,17 +222,19 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     win: 1e7,
     // Dynamic evaluation (evalMove)
     eval: {
-      len: 155,
-      fours: 5867,
-      threes: 1951,
-      center: 34,
-      openFour: 6914,
-      oppF3: 1500
+      len: 124,
+      liveFour: 85356,
+      sleepFour: 5949,
+      liveThree: 4665,
+      center: 44,
+      openFour: 8651,
+      oppF3: 2000,
+      fourThree: 21670
     },
     // Static evaluation (sideScore)
     static: {
-      black: { len4: 1605, len: 164, fours: 6680, threes: 2186 },
-      white: { len4: 2160, len: 176, fours: 5521, threes: 1806 },
+      black: { len4: 1698, len: 173, fours: 5118, threes: 2532 },
+      white: { len4: 2938, len: 158, fours: 4670, threes: 1413 },
       oppThrees: 600
     }
   };
@@ -358,40 +360,39 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
   }
   function countThreatsAt(r,c,color){
     const D=[[1,0],[0,1],[1,1],[1,-1]]; let fours=0, threes=0;
-    const F4=[/\.xxxx\./g,/xxxx\./g,/\.xxxx/g,/xxx\.x/g,/x\.xxx/g,/xx\.xx/g];
-    const F3=[/\.xxx\./g,/\.xx\.x\./g,/\.x\.xx\./g];
+    let liveFour=0, sleepFour=0, liveThree=0;
+    
+    // Live Four: .xxxx. (Unstoppable)
+    const R_L4 = /\.xxxx\./;
+    // Sleep Four: xxxx., .xxxx, x.xxx, etc. (Forcing)
+    const R_S4 = [/xxxx\./, /\.xxxx/, /x\.xxx/, /xxx\.x/, /xx\.xx/];
+    // Live Three: .xxx., .x.xx. (Threat)
+    const R_L3 = [/\.xxx\./, /\.x\.xx\./, /\.xx\.x\./];
+
     for(const [dr,dc] of D){
       const {s,idx}=lineStringAround(r,c,color,dr,dc);
-      let has4=false;
-      for(const re of F4){ 
-        re.lastIndex=0; let m; 
-        while((m=re.exec(s))){ 
-          if(m.index<=idx && idx<m.index+m[0].length){ has4=true; break; } 
-        } 
-        if(has4) break; 
+      
+      // Check Live Four
+      let m = R_L4.exec(s);
+      if(m && m.index<=idx && idx<m.index+m[0].length){ liveFour++; continue; }
+
+      // Check Sleep Four
+      let isS4=false;
+      for(const re of R_S4){
+        let m2=re.exec(s);
+        if(m2 && m2.index<=idx && idx<m2.index+m2[0].length){ isS4=true; break; }
       }
-      if (has4){ fours++; continue; }
-      let has3=false;
-      for(const re of F3){ 
-        re.lastIndex=0; let m; 
-        while((m=re.exec(s))){ 
-          if(m.index<=idx && idx<m.index+m[0].length){
-            // Strict Renju Rule: A Three must be able to become an Open Four.
-            // An Open Four requires 6 spaces (e.g. .xxxx.).
-            // The regex matches 5 chars (e.g. .xxx.). We need one more empty space on either side.
-            // Check if s has space before match or after match.
-            const before = m.index > 0 && s[m.index-1] === '.';
-            const after = m.index + m[0].length < s.length && s[m.index + m[0].length] === '.';
-            if (before || after) {
-              has3=true; break; 
-            }
-          } 
-        } 
-        if(has3) break; 
+      if(isS4){ sleepFour++; continue; }
+
+      // Check Live Three
+      let isL3=false;
+      for(const re of R_L3){
+        let m3=re.exec(s);
+        if(m3 && m3.index<=idx && idx<m3.index+m3[0].length){ isL3=true; break; }
       }
-      if (has3) threes++;
+      if(isL3) liveThree++;
     }
-    return {fours,threes};
+    return {liveFour, sleepFour, liveThree};
   }
   function hasNeighbor(r,c,d){
     for(let dr=-d;dr<=d;dr++) for(let dc=-d;dc<=d;dc++){
@@ -463,15 +464,16 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     if(!inB(r,c) || board[r][c]!==EMPTY) return -1e18;
     board[r][c]=color;
     const len=maxLine(r,c,color);
-    const t=countThreatsAt(r,c,color);
+    const {liveFour, sleepFour, liveThree} = countThreatsAt(r,c,color);
     const opp=(color===BLACK)?WHITE:BLACK;
     let sc=0;
     if ((color===BLACK && len===5) || (color===WHITE && len>=5)) sc+=WEIGHTS.win;
-    sc += WEIGHTS.eval.len*len + WEIGHTS.eval.fours*t.fours + WEIGHTS.eval.threes*t.fours; // Note: t.threes logic in original was t.threes, assuming typo in my read or original code. Correcting to t.threes.
-    // Correction: The original code had 2100*t.threes.
-    sc = 0; // Reset to be clean
-    if ((color===BLACK && len===5) || (color===WHITE && len>=5)) sc+=WEIGHTS.win;
-    sc += WEIGHTS.eval.len*len + WEIGHTS.eval.fours*t.fours + WEIGHTS.eval.threes*t.threes;
+    
+    sc += WEIGHTS.eval.len*len + WEIGHTS.eval.liveFour*liveFour + WEIGHTS.eval.sleepFour*sleepFour + WEIGHTS.eval.liveThree*liveThree;
+    
+    // Four-Three: A live three and a four (live or sleep)
+    if ((liveFour + sleepFour) > 0 && liveThree > 0) sc += WEIGHTS.eval.fourThree;
+    
     const dx=Math.abs(c-7), dy=Math.abs(r-7); sc += WEIGHTS.eval.center*(7-Math.max(dx,dy));
     if (createsOpenFour(color,r,c)) sc += WEIGHTS.eval.openFour;
     const oppF3 = currentFreeThreeFor(opp).length;
@@ -542,11 +544,12 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     for(let r=0;r<N;r++) for(let c=0;c<N;c++){
       if(board[r][c]===color){
         const len=maxLine(r,c,color);
-        const t=countThreatsAt(r,c,color);
-        if(color===BLACK){ s+=(len>=4?WEIGHTS.static.black.len4:0)+WEIGHTS.static.black.len*len+WEIGHTS.static.black.fours*t.fours+WEIGHTS.static.black.threes*t.threes; }
-        else { s+=(len>=4?WEIGHTS.static.white.len4:0)+WEIGHTS.static.white.len*len+WEIGHTS.static.white.fours*t.fours+WEIGHTS.static.white.threes*t.threes; }
+        const {liveFour, sleepFour, liveThree} = countThreatsAt(r,c,color);
+        const fours = liveFour + sleepFour;
+        if(color===BLACK){ s+=(len>=4?WEIGHTS.static.black.len4:0)+WEIGHTS.static.black.len*len+WEIGHTS.static.black.fours*fours+WEIGHTS.static.black.threes*liveThree; }
+        else { s+=(len>=4?WEIGHTS.static.white.len4:0)+WEIGHTS.static.white.len*len+WEIGHTS.static.white.fours*fours+WEIGHTS.static.white.threes*liveThree; }
       }
-      if(board[r][c]===opp){ const t=countThreatsAt(r,c,opp); s+=WEIGHTS.static.oppThrees*t.threes; }
+      if(board[r][c]===opp){ const t=countThreatsAt(r,c,opp); s+=WEIGHTS.static.oppThrees*t.liveThree; }
     }
     return s;
   }
