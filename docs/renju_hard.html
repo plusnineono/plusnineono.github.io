@@ -222,19 +222,20 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     win: 1e7,
     // Dynamic evaluation (evalMove)
     eval: {
-      len: 124,
-      liveFour: 85356,
-      sleepFour: 5949,
-      liveThree: 4665,
-      center: 44,
-      openFour: 8651,
+      len: 94,
+      liveFour: 86344,
+      sleepFour: 6149,
+      liveThree: 3860,
+      sleepThree: 2563,
+      center: 46,
+      openFour: 9208,
       oppF3: 2000,
-      fourThree: 21670
+      fourThree: 71187
     },
     // Static evaluation (sideScore)
     static: {
-      black: { len4: 1698, len: 173, fours: 5118, threes: 2532 },
-      white: { len4: 2938, len: 158, fours: 4670, threes: 1413 },
+      black: { len4: 1460, len: 184, fours: 5722, threes: 2643, sleepThree: 1658 },
+      white: { len4: 2829, len: 122, fours: 4152, threes: 1295, sleepThree: 824 },
       oppThrees: 600
     }
   };
@@ -360,7 +361,7 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
   }
   function countThreatsAt(r,c,color){
     const D=[[1,0],[0,1],[1,1],[1,-1]]; let fours=0, threes=0;
-    let liveFour=0, sleepFour=0, liveThree=0;
+    let liveFour=0, sleepFour=0, liveThree=0, sleepThree=0;
     
     // Live Four: .xxxx. (Unstoppable)
     const R_L4 = /\.xxxx\./;
@@ -368,6 +369,8 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     const R_S4 = [/xxxx\./, /\.xxxx/, /x\.xxx/, /xxx\.x/, /xx\.xx/];
     // Live Three: .xxx., .x.xx. (Threat)
     const R_L3 = [/\.xxx\./, /\.x\.xx\./, /\.xx\.x\./];
+    // Sleep Three: .xxx, xxx., .x.xx, etc. (Positional)
+    const R_S3 = [/\.xxx/, /xxx\./, /\.x\.xx/, /xx\.x\./, /\.xx\.x/, /x\.xx\./];
 
     for(const [dr,dc] of D){
       const {s,idx}=lineStringAround(r,c,color,dr,dc);
@@ -390,9 +393,17 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
         let m3=re.exec(s);
         if(m3 && m3.index<=idx && idx<m3.index+m3[0].length){ isL3=true; break; }
       }
-      if(isL3) liveThree++;
+      if(isL3){ liveThree++; continue; }
+
+      // Check Sleep Three
+      let isS3=false;
+      for(const re of R_S3){
+        let m4=re.exec(s);
+        if(m4 && m4.index<=idx && idx<m4.index+m4[0].length){ isS3=true; break; }
+      }
+      if(isS3) sleepThree++;
     }
-    return {liveFour, sleepFour, liveThree};
+    return {liveFour, sleepFour, liveThree, sleepThree};
   }
   function hasNeighbor(r,c,d){
     for(let dr=-d;dr<=d;dr++) for(let dc=-d;dc<=d;dc++){
@@ -464,12 +475,12 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     if(!inB(r,c) || board[r][c]!==EMPTY) return -1e18;
     board[r][c]=color;
     const len=maxLine(r,c,color);
-    const {liveFour, sleepFour, liveThree} = countThreatsAt(r,c,color);
+    const {liveFour, sleepFour, liveThree, sleepThree} = countThreatsAt(r,c,color);
     const opp=(color===BLACK)?WHITE:BLACK;
     let sc=0;
     if ((color===BLACK && len===5) || (color===WHITE && len>=5)) sc+=WEIGHTS.win;
     
-    sc += WEIGHTS.eval.len*len + WEIGHTS.eval.liveFour*liveFour + WEIGHTS.eval.sleepFour*sleepFour + WEIGHTS.eval.liveThree*liveThree;
+    sc += WEIGHTS.eval.len*len + WEIGHTS.eval.liveFour*liveFour + WEIGHTS.eval.sleepFour*sleepFour + WEIGHTS.eval.liveThree*liveThree + WEIGHTS.eval.sleepThree*sleepThree;
     
     // Four-Three: A live three and a four (live or sleep)
     if ((liveFour + sleepFour) > 0 && liveThree > 0) sc += WEIGHTS.eval.fourThree;
@@ -544,10 +555,10 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     for(let r=0;r<N;r++) for(let c=0;c<N;c++){
       if(board[r][c]===color){
         const len=maxLine(r,c,color);
-        const {liveFour, sleepFour, liveThree} = countThreatsAt(r,c,color);
+        const {liveFour, sleepFour, liveThree, sleepThree} = countThreatsAt(r,c,color);
         const fours = liveFour + sleepFour;
-        if(color===BLACK){ s+=(len>=4?WEIGHTS.static.black.len4:0)+WEIGHTS.static.black.len*len+WEIGHTS.static.black.fours*fours+WEIGHTS.static.black.threes*liveThree; }
-        else { s+=(len>=4?WEIGHTS.static.white.len4:0)+WEIGHTS.static.white.len*len+WEIGHTS.static.white.fours*fours+WEIGHTS.static.white.threes*liveThree; }
+        if(color===BLACK){ s+=(len>=4?WEIGHTS.static.black.len4:0)+WEIGHTS.static.black.len*len+WEIGHTS.static.black.fours*fours+WEIGHTS.static.black.threes*liveThree+WEIGHTS.static.black.sleepThree*sleepThree; }
+        else { s+=(len>=4?WEIGHTS.static.white.len4:0)+WEIGHTS.static.white.len*len+WEIGHTS.static.white.fours*fours+WEIGHTS.static.white.threes*liveThree+WEIGHTS.static.white.sleepThree*sleepThree; }
       }
       if(board[r][c]===opp){ const t=countThreatsAt(r,c,opp); s+=WEIGHTS.static.oppThrees*t.liveThree; }
     }
