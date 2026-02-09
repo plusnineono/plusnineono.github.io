@@ -164,6 +164,12 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 
     
   
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">February 9, 2026</p>
+    </div>
+  </div>
     
   </div>
   
@@ -222,20 +228,20 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     win: 1e7,
     // Dynamic evaluation (evalMove)
     eval: {
-      len: 89,
-      liveFour: 84599,
-      sleepFour: 6125,
-      liveThree: 3766,
-      sleepThree: 2682,
+      len: 78,
+      liveFour: 98721,
+      sleepFour: 6480,
+      liveThree: 3868,
+      sleepThree: 2538,
       center: 49,
-      openFour: 9626,
+      openFour: 9833,
       oppF3: 2000,
-      fourThree: 67752
+      fourThree: 57238
     },
     // Static evaluation (sideScore)
     static: {
-      black: { len4: 1337, len: 193, fours: 5596, threes: 2738, sleepThree: 1699 },
-      white: { len4: 2821, len: 119, fours: 4377, threes: 1530, sleepThree: 722 },
+      black: { len4: 1314, len: 190, fours: 5388, threes: 2927, sleepThree: 1700 },
+      white: { len4: 3499, len: 139, fours: 4686, threes: 1329, sleepThree: 693 },
       oppThrees: 600
     }
   };
@@ -341,8 +347,8 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     if (len===5){ board[r][c]=EMPTY; return {forbidden:false}; }
     const t=countThreatsAt(r,c,BLACK);
     board[r][c]=EMPTY;
-    if (t.fours>=2) return {forbidden:true, reason:'double-four'};
-    if (t.threes>=2) return {forbidden:true, reason:'double-three'};
+    if ((t.liveFour+t.sleepFour)>=2) return {forbidden:true, reason:'double-four'};
+    if (t.liveThree>=2) return {forbidden:true, reason:'double-three'};
     return {forbidden:false};
   }
   function lineStringAround(r,c,color,dr,dc){
