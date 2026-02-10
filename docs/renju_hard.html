@@ -189,6 +189,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
     <button id="undo">Undo</button>
   </div>
   <div id="status">Your move…</div>
+  <div style="font-size:0.8rem;color:#666;margin-top:6px;">Latest training update: <span id="train-time">2026-02-09 17:38:12</span></div>
 </div>
 
 <div class="board-wrap">
@@ -228,20 +229,21 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     win: 1e7,
     // Dynamic evaluation (evalMove)
     eval: {
-      len: 78,
-      liveFour: 98721,
-      sleepFour: 6480,
-      liveThree: 3868,
-      sleepThree: 2538,
-      center: 49,
-      openFour: 9833,
+      len: 66,
+      liveFour: 108311,
+      sleepFour: 6753,
+      liveThree: 3494,
+      sleepThree: 2552,
+      center: 47,
+      openFour: 9116,
       oppF3: 2000,
-      fourThree: 57238
+      fourThree: 60495,
+      doubleThree: 52657
     },
     // Static evaluation (sideScore)
     static: {
-      black: { len4: 1314, len: 190, fours: 5388, threes: 2927, sleepThree: 1700 },
-      white: { len4: 3499, len: 139, fours: 4686, threes: 1329, sleepThree: 693 },
+      black: { len4: 1276, len: 166, fours: 5184, threes: 3007, sleepThree: 1577 },
+      white: { len4: 3258, len: 138, fours: 4393, threes: 1412, sleepThree: 750 },
       oppThrees: 600
     }
   };
@@ -370,42 +372,55 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     let liveFour=0, sleepFour=0, liveThree=0, sleepThree=0;
     
     // Live Four: .xxxx. (Unstoppable)
-    const R_L4 = /\.xxxx\./;
+    const R_L4 = /\.xxxx\./g;
     // Sleep Four: xxxx., .xxxx, x.xxx, etc. (Forcing)
-    const R_S4 = [/xxxx\./, /\.xxxx/, /x\.xxx/, /xxx\.x/, /xx\.xx/];
+    const R_S4 = [/xxxx\./g, /\.xxxx/g, /x\.xxx/g, /xxx\.x/g, /xx\.xx/g];
     // Live Three: .xxx., .x.xx. (Threat)
-    const R_L3 = [/\.xxx\./, /\.x\.xx\./, /\.xx\.x\./];
+    const R_L3 = [/\.xxx\./g, /\.x\.xx\./g, /\.xx\.x\./g];
     // Sleep Three: .xxx, xxx., .x.xx, etc. (Positional)
-    const R_S3 = [/\.xxx/, /xxx\./, /\.x\.xx/, /xx\.x\./, /\.xx\.x/, /x\.xx\./];
+    const R_S3 = [/\.xxx/g, /xxx\./g, /\.x\.xx/g, /xx\.x\./g, /\.xx\.x/g, /x\.xx\./g];
 
     for(const [dr,dc] of D){
       const {s,idx}=lineStringAround(r,c,color,dr,dc);
       
       // Check Live Four
-      let m = R_L4.exec(s);
-      if(m && m.index<=idx && idx<m.index+m[0].length){ liveFour++; continue; }
+      let isL4=false;
+      R_L4.lastIndex=0; let m;
+      while((m=R_L4.exec(s))){
+        if(m.index<=idx && idx<m.index+m[0].length){ isL4=true; break; }
+      }
+      if(isL4){ liveFour++; continue; }
 
       // Check Sleep Four
       let isS4=false;
       for(const re of R_S4){
-        let m2=re.exec(s);
-        if(m2 && m2.index<=idx && idx<m2.index+m2[0].length){ isS4=true; break; }
+        re.lastIndex=0;
+        while((m=re.exec(s))){
+          if(m.index<=idx && idx<m.index+m[0].length){ isS4=true; break; }
+        }
+        if(isS4) break;
       }
       if(isS4){ sleepFour++; continue; }
 
       // Check Live Three
       let isL3=false;
       for(const re of R_L3){
-        let m3=re.exec(s);
-        if(m3 && m3.index<=idx && idx<m3.index+m3[0].length){ isL3=true; break; }
+        re.lastIndex=0;
+        while((m=re.exec(s))){
+          if(m.index<=idx && idx<m.index+m[0].length){ isL3=true; break; }
+        }
+        if(isL3) break;
       }
       if(isL3){ liveThree++; continue; }
 
       // Check Sleep Three
       let isS3=false;
       for(const re of R_S3){
-        let m4=re.exec(s);
-        if(m4 && m4.index<=idx && idx<m4.index+m4[0].length){ isS3=true; break; }
+        re.lastIndex=0;
+        while((m=re.exec(s))){
+          if(m.index<=idx && idx<m.index+m[0].length){ isS3=true; break; }
+        }
+        if(isS3) break;
       }
       if(isS3) sleepThree++;
     }
@@ -490,6 +505,7 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     
     // Four-Three: A live three and a four (live or sleep)
     if ((liveFour + sleepFour) > 0 && liveThree > 0) sc += WEIGHTS.eval.fourThree;
+    if (color === WHITE && liveThree >= 2) sc += WEIGHTS.eval.doubleThree;
     
     const dx=Math.abs(c-7), dy=Math.abs(r-7); sc += WEIGHTS.eval.center*(7-Math.max(dx,dy));
     if (createsOpenFour(color,r,c)) sc += WEIGHTS.eval.openFour;
