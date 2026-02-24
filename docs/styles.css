@@ -1,1 +1,213 @@
-/* css styles */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap");
+
+/* Site polish: typography, spacing, and subtle surfaces */
+:root {
+  --page-bg: #f4f1ea;
+  --page-bg-soft: #fbfaf7;
+  --ink: #1d2430;
+  --ink-muted: #556070;
+  --line: #d8d0c2;
+  --accent: #7a4b2d;
+  --accent-soft: #efe3d6;
+  --card: rgba(255, 255, 255, 0.78);
+  --shadow: 0 14px 34px rgba(30, 28, 25, 0.08);
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(209, 186, 160, 0.22), transparent 45%),
+    radial-gradient(circle at 92% 14%, rgba(165, 186, 200, 0.18), transparent 38%),
+    linear-gradient(180deg, var(--page-bg-soft), var(--page-bg));
+  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
+  line-height: 1.72;
+}
+
+.navbar {
+  border-bottom: 1px solid rgba(216, 208, 194, 0.85);
+  background: rgba(251, 250, 247, 0.86);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(30, 28, 25, 0.03);
+}
+
+.navbar-brand,
+.navbar-nav .nav-link {
+  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.navbar-brand {
+  font-weight: 600;
+}
+
+.navbar-nav .nav-link {
+  color: var(--ink-muted);
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
+  color: var(--accent);
+}
+
+#quarto-sidebar,
+#quarto-sidebar .sidebar-menu-container,
+#quarto-sidebar .sidebar-navigation {
+  background: transparent !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+}
+
+#quarto-sidebar .sidebar-item {
+  background: transparent;
+}
+
+main.content {
+  max-width: 46rem;
+  background: var(--card);
+  border: 1px solid rgba(216, 208, 194, 0.75);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: clamp(1.2rem, 2vw, 2rem) clamp(1rem, 3vw, 2.4rem);
+  margin-top: 1.2rem;
+  margin-bottom: 2.2rem;
+}
+
+.page-back-nav {
+  margin-top: 1.6rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(122, 75, 45, 0.14);
+}
+
+.page-back-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(75, 52, 40, 0.82);
+  border-radius: 0;
+  padding: 0;
+  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: color 140ms ease, transform 140ms ease;
+  text-decoration: underline;
+  text-decoration-color: rgba(122, 75, 45, 0.25);
+  text-underline-offset: 0.14em;
+}
+
+.page-back-button:hover {
+  color: rgba(98, 56, 31, 0.95);
+  text-decoration-color: rgba(98, 56, 31, 0.45);
+}
+
+.page-back-button:active {
+  transform: translateY(1px);
+}
+
+.page-back-button:focus-visible {
+  outline: 2px solid rgba(122, 75, 45, 0.35);
+  outline-offset: 2px;
+}
+
+.quarto-title-block .title {
+  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #1f1c19;
+}
+
+.quarto-title-block {
+  margin-bottom: 1.4rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(216, 208, 194, 0.7);
+}
+
+h2, h3, h4 {
+  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
+  color: #2c2a26;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin-top: 1.7rem;
+  margin-bottom: 0.55rem;
+}
+
+h2 {
+  font-size: 1.22rem;
+}
+
+p {
+  margin-bottom: 0.95rem;
+}
+
+ul, ol {
+  padding-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+li + li {
+  margin-top: 0.28rem;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid rgba(122, 75, 45, 0.2);
+  margin: 1.4rem 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-color: rgba(122, 75, 45, 0.35);
+  text-underline-offset: 0.12em;
+}
+
+a:hover {
+  color: #62381f;
+  text-decoration-color: rgba(98, 56, 31, 0.6);
+}
+
+blockquote {
+  border-left: 3px solid rgba(122, 75, 45, 0.35);
+  padding-left: 0.9rem;
+  color: var(--ink-muted);
+}
+
+#TOC,
+.sidebar nav[role="doc-toc"] {
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(216, 208, 194, 0.7);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+}
+
+#TOC .nav-link {
+  color: var(--ink-muted);
+}
+
+#TOC .nav-link:hover,
+#TOC .nav-link.active {
+  color: var(--accent);
+}
+
+.quarto-listing-category,
+.date {
+  color: var(--ink-muted);
+}
+
+pre, code {
+  font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@media (max-width: 991.98px) {
+  main.content {
+    border-radius: 12px;
+    padding: 1rem 1rem 1.35rem;
+    margin-top: 0.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

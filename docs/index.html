@@ -85,7 +85,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <meta name="twitter:card" content="summary">
 </head>
 
-<body class="nav-sidebar floating nav-fixed">
+<body class="nav-fixed">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -114,41 +114,16 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
     <a class="nav-link" href="./natural-languages.html"> 
 <span class="menu-text">Natural Languages</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./renju_home.html"> 
-<span class="menu-text">2D Ising Model</span></a>
-  </li>  
 </ul>
           </div> <!-- /navcollapse -->
             <div class="quarto-navbar-tools">
 </div>
       </div> <!-- /container-fluid -->
     </nav>
-  <nav class="quarto-secondary-nav">
-    <div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
-        <i class="bi bi-layout-text-sidebar-reverse"></i>
-      </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Tasuku Ono</li></ol></nav>
-        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-        </a>
-      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
-        <i class="bi bi-search"></i>
-      </button>
-    </div>
-  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
-        <div class="mt-2 flex-shrink-0 align-items-center">
-        <div class="sidebar-search">
-        <div id="quarto-search" class="" title="Search"></div>
-        </div>
-        </div>
-</nav>
-<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
         
@@ -185,11 +160,55 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 </ul>
 <hr>
 <p>My undergraduate and graduate studies are supported by <a href="https://www.recruit-foundation.org/en/">Ezoe Memorial Recruit Foundation</a>.</p>
-<p>Fun fact: my name is officially spelled as “Tasuku” in the alphabet under <a href="https://en.wikipedia.org/wiki/Hepburn_romanization">the Hepburn Romanization system</a>. However, the two “u”s are barely pronounced in Japanese (called vowel devoicing; see <a href="https://www.coelang.tufs.ac.jp/ja/en/pmod/practical/03-03-01.php">this concise article</a> on the Tokyo University of Foreign Studies website). So the actual pronunciation sounds closer to “Task” as in the English word “task.”</p>
+<p>Fun fact: my name is officially spelled as “Tasuku” in the alphabet under <a href="https://en.wikipedia.org/wiki/Hepburn_romanization">the Hepburn Romanization system</a>. However, the two “u”s are barely pronounced in Japanese (vowel devoicing; see <a href="https://www.coelang.tufs.ac.jp/ja/en/pmod/practical/03-03-01.php">this concise article</a> on the Tokyo University of Foreign Studies website), so the actual pronunciation sounds closer to “Task” as in the English word “task.”</p>
 
 
 
 </main> <!-- /main -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var main = document.querySelector("main.content");
+  if (!main || document.querySelector(".page-back-nav")) return;
+
+  var path = window.location.pathname || "";
+  var isHome = /\/$/.test(path) || /\/index\.html$/.test(path);
+  if (isHome) return;
+  var isNaturalLanguagesIndex = /\/natural-languages\.html$/.test(path);
+  if (isNaturalLanguagesIndex) return;
+
+  var wrapper = document.createElement("div");
+  wrapper.className = "page-back-nav";
+
+  var button = document.createElement("button");
+  button.type = "button";
+  button.className = "page-back-button";
+  button.setAttribute("aria-label", "Go back to previous page");
+  button.textContent = "Back";
+
+  button.addEventListener("click", function () {
+    var sameOriginReferrer = false;
+    if (document.referrer) {
+      try {
+        sameOriginReferrer = new URL(document.referrer).origin === window.location.origin;
+      } catch (e) {
+        sameOriginReferrer = false;
+      }
+    }
+
+    if (sameOriginReferrer && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    var offsetMeta = document.querySelector('meta[name="quarto:offset"]');
+    var offset = offsetMeta ? offsetMeta.getAttribute("content") || "./" : "./";
+    window.location.href = offset + "index.html";
+  });
+
+  wrapper.appendChild(button);
+  main.appendChild(wrapper);
+});
+</script>
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {

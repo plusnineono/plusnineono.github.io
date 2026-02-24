@@ -84,7 +84,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <meta name="twitter:card" content="summary">
 </head>
 
-<body class="nav-sidebar floating nav-fixed">
+<body class="nav-fixed">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -113,45 +113,20 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
     <a class="nav-link" href="./natural-languages.html"> 
 <span class="menu-text">Natural Languages</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./renju_home.html"> 
-<span class="menu-text">2D Ising Model</span></a>
-  </li>  
 </ul>
           </div> <!-- /navcollapse -->
             <div class="quarto-navbar-tools">
 </div>
       </div> <!-- /container-fluid -->
     </nav>
-  <nav class="quarto-secondary-nav">
-    <div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
-        <i class="bi bi-layout-text-sidebar-reverse"></i>
-      </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Renju Dojo 連珠道場</li></ol></nav>
-        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-        </a>
-      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
-        <i class="bi bi-search"></i>
-      </button>
-    </div>
-  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
-        <div class="mt-2 flex-shrink-0 align-items-center">
-        <div class="sidebar-search">
-        <div id="quarto-search" class="" title="Search"></div>
-        </div>
-        </div>
-</nav>
-<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     
 <!-- main -->
-<main class="content column-page-right" id="quarto-document-content">
+<main class="content column-page" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
@@ -160,14 +135,14 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 
 
 
-<div class="quarto-title-meta column-page-right">
+<div class="quarto-title-meta column-page">
 
     
   
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">February 9, 2026</p>
+      <p class="date-modified">February 10, 2026</p>
     </div>
   </div>
     
@@ -189,7 +164,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
     <button id="undo">Undo</button>
   </div>
   <div id="status">Your move…</div>
-  <div style="font-size:0.8rem;color:#666;margin-top:6px;">Latest training update: <span id="train-time">2026-02-09 17:38:12</span></div>
+  <div style="font-size:0.8rem;color:#666;margin-top:6px;">Latest training update: <span id="train-time">2026-02-09 23:06:06</span></div>
 </div>
 
 <div class="board-wrap">
@@ -229,21 +204,21 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     win: 1e7,
     // Dynamic evaluation (evalMove)
     eval: {
-      len: 66,
-      liveFour: 108311,
-      sleepFour: 6753,
-      liveThree: 3494,
-      sleepThree: 2552,
+      len: 62,
+      liveFour: 109032,
+      sleepFour: 7093,
+      liveThree: 3607,
+      sleepThree: 2284,
       center: 47,
-      openFour: 9116,
+      openFour: 9496,
       oppF3: 2000,
-      fourThree: 60495,
-      doubleThree: 52657
+      fourThree: 70058,
+      doubleThree: 54301
     },
     // Static evaluation (sideScore)
     static: {
-      black: { len4: 1276, len: 166, fours: 5184, threes: 3007, sleepThree: 1577 },
-      white: { len4: 3258, len: 138, fours: 4393, threes: 1412, sleepThree: 750 },
+      black: { len4: 1336, len: 159, fours: 4019, threes: 3369, sleepThree: 1707 },
+      white: { len4: 3318, len: 125, fours: 3704, threes: 1486, sleepThree: 714 },
       oppThrees: 600
     }
   };
@@ -253,6 +228,7 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
   function reset(){
     board=Array.from({length:N},()=>Array(N).fill(EMPTY));
     history=[]; winner=null; lastMove=null; turn=BLACK;
+    Z.init();
     humanPlays = sideSel.value==='human-black'?BLACK:WHITE;
     aiPlays = humanPlays===BLACK?WHITE:BLACK;
     draw();
@@ -313,11 +289,11 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
       const chk=forbiddenIfBlack(r,c);
       if (chk.forbidden) return false;
     }
-    doMove(r,c,col);
+    doMove(r,c,col); // doMove calls put internally via board update? No, doMove updates board directly.
     return true;
   }
   function doMove(r,c,col){
-    board[r][c]=col; lastMove={r,c}; history.push({r,c,color:col});
+    put(r,c,col); lastMove={r,c}; history.push({r,c,color:col});
     const len=maxLine(r,c,col);
     if (col===BLACK){ if (len===5) winner=BLACK; } else { if (len>=5) winner=WHITE; }
     turn=(col===BLACK)?WHITE:BLACK;
@@ -327,7 +303,7 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
   function undo(){
     if (!history.length || winner) return;
     const n=(history.length>=2)?2:1;
-    for(let i=0;i<n;i++){ const m=history.pop(); board[m.r][m.c]=EMPTY; }
+    for(let i=0;i<n;i++){ const m=history.pop(); take(m.r,m.c,m.color); }
     winner=null; lastMove=history[history.length-1]||null; turn=BLACK;
     if(history.length){ const last=history[history.length-1]; turn=(last.color===BLACK)?WHITE:BLACK; }
     draw(); status('Undid.');
@@ -343,12 +319,12 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     return best;
   }
   function forbiddenIfBlack(r,c){
-    board[r][c]=BLACK;
+    put(r,c,BLACK);
     const len=maxLine(r,c,BLACK);
-    if (len>5){ board[r][c]=EMPTY; return {forbidden:true, reason:'overline'}; }
-    if (len===5){ board[r][c]=EMPTY; return {forbidden:false}; }
+    if (len>5){ take(r,c,BLACK); return {forbidden:true, reason:'overline'}; }
+    if (len===5){ take(r,c,BLACK); return {forbidden:false}; }
     const t=countThreatsAt(r,c,BLACK);
-    board[r][c]=EMPTY;
+    take(r,c,BLACK);
     if ((t.liveFour+t.sleepFour)>=2) return {forbidden:true, reason:'double-four'};
     if (t.liveThree>=2) return {forbidden:true, reason:'double-three'};
     return {forbidden:false};
@@ -458,13 +434,13 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     return moves;
   }
   function createsOpenFour(color,r,c){
-    board[r][c]=color;
+    put(r,c,color);
     const D=[[1,0],[0,1],[1,1],[1,-1]]; let ok=false;
     for(const [dr,dc] of D){
       const {s}=lineStringAround(r,c,color,dr,dc);
       if (/\.(xxxx)\./.test(s)) { ok=true; break; }
     }
-    board[r][c]=EMPTY; return ok;
+    take(r,c,color); return ok;
   }
   function openFourSquaresFor(color){
     const out=[];
@@ -480,21 +456,21 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     for(let r=0;r<N;r++) for(let c=0;c<N;c++){
       if(board[r][c]!==EMPTY) continue;
       if(color===BLACK && forbiddenIfBlack(r,c).forbidden) continue;
-      board[r][c]=color;
+      put(r,c,color);
       const o4 = openFourSquaresFor(color);
       if (o4.length){
         const oSet=new Set(o4.map(p=>p.r+','+p.c));
         const f3 = currentFreeThreeFor(color).some(x=>!oSet.has(x.r+','+x.c));
         if (f3) pts.push({r,c});
       }
-      board[r][c]=EMPTY;
+      take(r,c,color);
     }
     return pts;
   }
   function opponent43Squares(opp){ return fourThreeSquaresFor(opp); }
   function evalMove(color,r,c){
     if(!inB(r,c) || board[r][c]!==EMPTY) return -1e18;
-    board[r][c]=color;
+    put(r,c,color);
     const len=maxLine(r,c,color);
     const {liveFour, sleepFour, liveThree, sleepThree} = countThreatsAt(r,c,color);
     const opp=(color===BLACK)?WHITE:BLACK;
@@ -511,7 +487,7 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     if (createsOpenFour(color,r,c)) sc += WEIGHTS.eval.openFour;
     const oppF3 = currentFreeThreeFor(opp).length;
     sc -= WEIGHTS.eval.oppF3*oppF3;
-    board[r][c]=EMPTY;
+    take(r,c,color);
     return sc;
   }
   function candidateMoves(color){
@@ -531,15 +507,16 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
   function safeLegal(color,r,c){ return board[r][c]===EMPTY && (color===WHITE || !forbiddenIfBlack(r,c).forbidden); }
   function isWinningPlacement(color,r,c){
     if(board[r][c]!==EMPTY) return false;
-    board[r][c]=color; const len=maxLine(r,c,color);
+    put(r,c,color); const len=maxLine(r,c,color);
     let win=(color===BLACK)?(len===5):(len>=5);
     if(color===BLACK && !win){ const chk=forbiddenIfBlack(r,c); if(chk.forbidden) win=false; }
-    board[r][c]=EMPTY; return win;
+    take(r,c,color); return win;
   }
   function immediateWinningMovesAll(color){
     const out=[];
     for(let r=0;r<N;r++) for(let c=0;c<N;c++){
       if(board[r][c]!==EMPTY) continue;
+      if(!hasNeighbor(r,c,1)) continue;
       if(color===BLACK && forbiddenIfBlack(r,c).forbidden) continue;
       if(isWinningPlacement(color,r,c)) out.push({r,c});
     }
@@ -547,10 +524,15 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
   }
   const Z=(function(){
     const rnd=()=> (Math.random()*2**32)>>>0;
-    const table=Array.from({length:N},()=>Array.from({length:N},()=>[rnd(),rnd(),rnd()]));
-    function key(){ let h=2166136261>>>0; for(let r=0;r<N;r++) for(let c=0;c<N;c++){ h ^= table[r][c][board[r][c]]; h = Math.imul(h,16777619)>>>0; } return h>>>0; }
-    return {key};
+    const table=Array.from({length:N},()=>Array.from({length:N},()=>[0,rnd(),rnd()]));
+    let h=0;
+    function init(){ h=0; }
+    function update(r,c,color){ h^=table[r][c][color]; }
+    function key(){ return h>>>0; }
+    return {init,update,key};
   })();
+  function put(r,c,color){ board[r][c]=color; Z.update(r,c,color); }
+  function take(r,c,color){ board[r][c]=EMPTY; Z.update(r,c,color); }
   const TT=new Map();
   const KILLERS=Array.from({length:64},()=>[]);
   const HIST=new Map();
@@ -601,9 +583,9 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     for(const m of currentFreeThreeFor(opp)) moves.push(m);
     const ordered=orderMoves(color, moves.filter(m=>safeLegal(color,m.r,m.c)), null);
     for(const m of ordered){
-      board[m.r][m.c]=color;
+      put(m.r,m.c,color);
       const r=quiescence(opp, -beta, -alpha, depthQ-1, deadline);
-      board[m.r][m.c]=EMPTY;
+      take(m.r,m.c,color);
       if (r.timeout) return {score:0, timeout:true};
       const val=-r.score;
       if (val>=beta) return {score:beta};
@@ -615,7 +597,7 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
   function search(color,depth,alpha,beta,last,deadline, ply){
     if (performance.now()>deadline) return {score:0, move:null, timeout:true};
     const opp=(color===BLACK)?WHITE:BLACK;
-    if(last){
+    if(last && !last.nullMove){
       const len=maxLine(last.r,last.c,last.color);
       const lastWon=(last.color===BLACK)?(len===5):(len>=5);
       if(lastWon) return {score:-999999+depth, move:null};
@@ -624,14 +606,33 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
       const q=quiescence(color, alpha, beta, 4, deadline);
       return {score:q.score, move:null, timeout:q.timeout};
     }
-    const key=(Z.key()*33+color+depth)>>>0; const hit=TT.get(key);
+    const key=(Z.key()^color^depth)>>>0; const hit=TT.get(key);
     if(hit && hit.depth>=depth){
       if(hit.flag==='EXACT') return {score:hit.score, move:hit.best};
       if(hit.flag==='LOWER' && hit.score>alpha) alpha=hit.score;
       if(hit.flag==='UPPER' && hit.score<beta)  beta=hit.score;
       if(alpha>=beta) return {score:hit.score, move:hit.best};
     }
-    let cands=candidateMoves(color).filter(m=>safeLegal(color,m.r,m.c));
+
+    // Immediate Threat Pruning (Forced Moves)
+    const oppWins = immediateWinningMovesAll(opp);
+    if (oppWins.length > 0) {
+      const myWins = immediateWinningMovesAll(color);
+      if (myWins.length > 0) return {score: 1000000+depth, move: myWins[0]};
+      cands = oppWins.filter(m => safeLegal(color, m.r, m.c));
+      if (!cands.length) return {score: -900000, move: null};
+    }
+    
+    // Null Move Pruning
+    if (depth>=3 && (!last || !last.nullMove) && ply>0){
+      const R=2;
+      const r=search(opp, depth-1-R, -beta, -beta+1, {nullMove:true}, deadline, ply+1);
+      if (!r.timeout && -r.score>=beta) return {score:beta, move:null};
+    }
+
+    if (!oppWins.length) {
+      cands=candidateMoves(color).filter(m=>safeLegal(color,m.r,m.c));
+    }
     if(!cands.length) return {score:0, move:null};
     const winners=[], others=[];
     for(const m of cands){ if(isWinningPlacement(color,m.r,m.c)) winners.push(m); else others.push(m); }
@@ -639,7 +640,7 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
     let best=null; let nodeType='UPPER'; let first=true;
     for(let i=0;i<cands.length;i++){
       const m=cands[i];
-      board[m.r][m.c]=color;
+      put(m.r,m.c,color);
       let d=depth-1;
       const forcing=createsOpenFour(color,m.r,m.c);
       const blocks=isWinningPlacement(opp,m.r,m.c);
@@ -648,24 +649,152 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
       let score;
       if (first){
         const r=search(opp,d,-beta,-alpha,{r:m.r,c:m.c,color},deadline, ply+1);
-        if(r.timeout){ board[m.r][m.c]=EMPTY; return {score:0, move:best, timeout:true}; }
+        if(r.timeout){ take(m.r,m.c,color); return {score:0, move:best, timeout:true}; }
         score=-r.score; first=false;
       } else {
         let r=search(opp,d,-alpha-1,-alpha,{r:m.r,c:m.c,color},deadline, ply+1);
-        if(r.timeout){ board[m.r][m.c]=EMPTY; return {score:0, move:best, timeout:true}; }
+        if(r.timeout){ take(m.r,m.c,color); return {score:0, move:best, timeout:true}; }
         score=-r.score;
         if(score>alpha && score<beta){
           r=search(opp,d,-beta,-score,{r:m.r,c:m.c,color},deadline, ply+1);
-          if(r.timeout){ board[m.r][m.c]=EMPTY; return {score:0, move:best, timeout:true}; }
+          if(r.timeout){ take(m.r,m.c,color); return {score:0, move:best, timeout:true}; }
           score=-r.score;
         }
       }
-      board[m.r][m.c]=EMPTY;
+      take(m.r,m.c,color);
       if(score>alpha){ alpha=score; best=m; nodeType='EXACT'; }
       if(alpha>=beta){ nodeType='LOWER'; addKiller(depth,m); bumpHist(m,depth); break; }
     }
     TT.set(key,{depth,score:alpha,best,flag:nodeType});
     return {score:alpha, move:best};
+  }
+  function getVcfResponse(r,c,color){
+    const D=[[1,0],[0,1],[1,1],[1,-1]];
+    const pats = [
+      {re:/xxxx\./g, off:4}, 
+      {re:/\.xxxx/g, off:0}, 
+      {re:/x\.xxx/g, off:1}, 
+      {re:/xx\.xx/g, off:2}, 
+      {re:/xxx\.x/g, off:3}
+    ];
+    for(const [dr,dc] of D){
+      const {s,idx,coords}=lineStringAround(r,c,color,dr,dc);
+      if(/xxxxx|\.xxxx\./.test(s)) return null; 
+      for(const {re,off} of pats){
+        re.lastIndex=0; let m;
+        while((m=re.exec(s))){
+          if(m.index<=idx && idx<m.index+5){
+            const threatIdx = m.index + off;
+            if(threatIdx>=0 && threatIdx<coords.length){
+               const [tr,tc] = coords[threatIdx];
+               if(board[tr][tc]===EMPTY) return {r:tr,c:tc};
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+  function getLiveThreeThreats(r,c,color){
+    const D=[[1,0],[0,1],[1,1],[1,-1]];
+    const threats=[];
+    const pats=[
+      {re:/\.xxx\./g, def:[0,4]},
+      {re:/\.x\.xx\./g, def:[0,2,5]},
+      {re:/\.xx\.x\./g, def:[0,3,5]}
+    ];
+    for(const [dr,dc] of D){
+      const {s,idx,coords}=lineStringAround(r,c,color,dr,dc);
+      for(const {re,def} of pats){
+        re.lastIndex=0; let m;
+        while((m=re.exec(s))){
+          if(m.index<=idx && idx<m.index+m[0].length){
+            for(const d of def){
+              const ti=m.index+d;
+              if(ti>=0 && ti<coords.length){
+                const [tr,tc]=coords[ti];
+                if(board[tr][tc]===EMPTY) threats.push({r:tr,c:tc});
+              }
+            }
+          }
+        }
+      }
+    }
+    return threats;
+  }
+  const VCT_TT=new Map();
+  function solveVct(color, depth, deadline){
+    if(depth<=0 || performance.now()>deadline) return null;
+    const key=(Z.key()^color^depth)>>>0;
+    if(VCT_TT.has(key) && VCT_TT.get(key).depth>=depth) return VCT_TT.get(key).res;
+    
+    const vcf=solveVcf(color, 12, deadline);
+    if(vcf){ VCT_TT.set(key,{depth,res:vcf}); return vcf; }
+    
+    const cands=[];
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+      if(board[r][c]===EMPTY && hasNeighbor(r,c,2)){
+        if(color===BLACK && forbiddenIfBlack(r,c).forbidden) continue;
+        put(r,c,color);
+        const threats=getLiveThreeThreats(r,c,color);
+        take(r,c,color);
+        if(threats.length){
+          const uniq=[]; const seen=new Set();
+          for(const t of threats){ const k=t.r+','+t.c; if(!seen.has(k)){ seen.add(k); uniq.push(t); } }
+          cands.push({r,c,defs:uniq});
+        }
+      }
+    }
+    cands.forEach(c=>c.score=evalMove(color,c.r,c.c));
+    cands.sort((a,b)=>b.score-a.score);
+    for(const {r,c,defs} of cands){
+      put(r,c,color);
+      const opp=color===BLACK?WHITE:BLACK;
+      let win=true;
+      for(const d of defs){
+        if(board[d.r][d.c]!==EMPTY) continue;
+        if(opp===BLACK && forbiddenIfBlack(d.r,d.c).forbidden) continue;
+        put(d.r,d.c,opp);
+        const res=solveVct(color, depth-1, deadline);
+        take(d.r,d.c,opp);
+        if(!res){ win=false; break; }
+      }
+      take(r,c,color);
+      if(win){ VCT_TT.set(key,{depth,res:{r,c}}); return {r,c}; }
+    }
+    VCT_TT.set(key,{depth,res:null});
+    return null;
+  }
+  function solveVcf(color, depth, deadline){
+    if(depth<=0 || performance.now()>deadline) return null;
+    const moves=[];
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+      if(board[r][c]===EMPTY && hasNeighbor(r,c,2)){
+        if(color===BLACK && forbiddenIfBlack(r,c).forbidden) continue;
+        put(r,c,color);
+        const len=maxLine(r,c,color);
+        if((color===BLACK && len===5) || (color===WHITE && len>=5)){ take(r,c,color); return {r,c}; }
+        if(createsOpenFour(color,r,c)){ take(r,c,color); return {r,c}; }
+        if(color===WHITE){
+           const {liveFour, sleepFour} = countThreatsAt(r,c,color);
+           if(liveFour+sleepFour >= 2){ take(r,c,color); return {r,c}; }
+        }
+        const resp = getVcfResponse(r,c,color);
+        take(r,c,color);
+        if(resp) moves.push({r,c,resp});
+      }
+    }
+    for(const {r,c,resp} of moves){
+       const {r:tr, c:tc} = resp;
+       const opp = color===BLACK?WHITE:BLACK;
+       if(board[tr][tc]!==EMPTY) continue;
+       if(opp===BLACK && forbiddenIfBlack(tr,tc).forbidden) return {r,c};
+       put(r,c,color); put(tr,tc,opp);
+       const res = solveVcf(color, depth-1, deadline);
+       take(tr,tc,opp); take(r,c,color);
+       if(res) return {r,c};
+    }
+    return null;
   }
   function tacticalMove(me){
     const opp=(me===BLACK)?WHITE:BLACK;
@@ -694,11 +823,16 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
       const cands=candidateMoves(me).filter(m=>safeLegal(me,m.r,m.c));
       for(const m of cands){ if(placeIfLegal(me,m.r,m.c)) return; }
       status('AI passes (no legal moves).'); turn=humanPlays;
+      for(const [k,v] of HIST) HIST.set(k, v*0.875);
     }, budget + 1500);
     setTimeout(()=>{
       try{
         const t = tacticalMove(me);
         if (t && placeIfLegal(me,t.r,t.c)){ clearTimeout(watchdog); return; }
+        const vcf = solveVcf(me, 12, performance.now()+1500);
+        if (vcf && placeIfLegal(me,vcf.r,vcf.c)){ clearTimeout(watchdog); return; }
+        const vct = solveVct(me, 10, performance.now()+2000);
+        if (vct && placeIfLegal(me,vct.r,vct.c)){ clearTimeout(watchdog); return; }
         let best=null, lastScore=0, deadline=performance.now()+budget;
         for(let depth=6; depth<=18; depth++){
           let alpha=lastScore-200, beta=lastScore+200;
@@ -719,6 +853,7 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
         const cands=candidateMoves(me).filter(m=>safeLegal(me,m.r,m.c));
         for(const m of cands){ if(placeIfLegal(me,m.r,m.c)) return; }
         status('AI passes (no legal moves).'); turn=humanPlays;
+        for(const [k,v] of HIST) HIST.set(k, v*0.875);
       }catch(e){
         console.error('AI error',e);
         clearTimeout(watchdog);
@@ -735,6 +870,50 @@ button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
 
 
 </main> <!-- /main -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var main = document.querySelector("main.content");
+  if (!main || document.querySelector(".page-back-nav")) return;
+
+  var path = window.location.pathname || "";
+  var isHome = /\/$/.test(path) || /\/index\.html$/.test(path);
+  if (isHome) return;
+  var isNaturalLanguagesIndex = /\/natural-languages\.html$/.test(path);
+  if (isNaturalLanguagesIndex) return;
+
+  var wrapper = document.createElement("div");
+  wrapper.className = "page-back-nav";
+
+  var button = document.createElement("button");
+  button.type = "button";
+  button.className = "page-back-button";
+  button.setAttribute("aria-label", "Go back to previous page");
+  button.textContent = "Back";
+
+  button.addEventListener("click", function () {
+    var sameOriginReferrer = false;
+    if (document.referrer) {
+      try {
+        sameOriginReferrer = new URL(document.referrer).origin === window.location.origin;
+      } catch (e) {
+        sameOriginReferrer = false;
+      }
+    }
+
+    if (sameOriginReferrer && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    var offsetMeta = document.querySelector('meta[name="quarto:offset"]');
+    var offset = offsetMeta ? offsetMeta.getAttribute("content") || "./" : "./";
+    window.location.href = offset + "index.html";
+  });
+
+  wrapper.appendChild(button);
+  main.appendChild(wrapper);
+});
+</script>
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
