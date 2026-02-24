@@ -42,11 +42,17 @@ body {
 
 .navbar-nav .nav-link {
   color: var(--ink-muted);
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .navbar-nav .nav-link:hover,
 .navbar-nav .nav-link.active {
   color: var(--accent);
+}
+
+.navbar-nav .nav-link.active {
+  font-weight: 500;
 }
 
 #quarto-sidebar,
