@@ -12,12 +12,7 @@ website:
         text: Publications
       - href: natural-languages.qmd
         text: Natural Languages
-      - href: renju.qmd
-        text: Renju
     # background: rgb(235, 130, 53)
-  sidebar:
-    search: true
-
   twitter-card:
     creator: "@PlusNineOnZero"
   google-analytics: "G-ZBV5W7QD1W"
@@ -26,6 +21,7 @@ format:
   html:
     theme: cosmo #sandstone
     css: styles.css
+    include-after-body: back-button.html
     toc: true
     linkcolor: rgb(71, 113, 154)
     smooth-scroll: true

@@ -1,0 +1,20 @@
+---
+title: "Tasuku Ono"
+sidebar: false
+---
+
+I am interested in exploring the intersection between theory and experiments on quantum many-body systems in AMO and condensed-matter physics.
+
+I am a graduate student at MIT; before that, I studied physics and mathematics at Harvard University.
+
+My recent works include
+
+* experiments on many-body dynamics in NV centers in [Professor Norman Yao's group](https://yao.physics.harvard.edu).
+* quantum simulation with ultracold atoms
+* laser cooling and trapping of molecules in [Professor John Doyle's group](https://projects.iq.harvard.edu/jdoyle).
+
+---
+
+My undergraduate and graduate studies are supported by [Ezoe Memorial Recruit Foundation](https://www.recruit-foundation.org/en/).
+
+Fun fact: my name is officially spelled as "Tasuku" in the alphabet under [the Hepburn Romanization system](https://en.wikipedia.org/wiki/Hepburn_romanization). However, the two "u"s are barely pronounced in Japanese (vowel devoicing; see [this concise article](https://www.coelang.tufs.ac.jp/ja/en/pmod/practical/03-03-01.php) on the Tokyo University of Foreign Studies website), so the actual pronunciation sounds closer to "Task" as in the English word "task."

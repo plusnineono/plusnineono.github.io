@@ -1,0 +1,44 @@
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var main = document.querySelector("main.content");
+  if (!main || document.querySelector(".page-back-nav")) return;
+
+  var path = window.location.pathname || "";
+  var isHome = /\/$/.test(path) || /\/index\.html$/.test(path);
+  if (isHome) return;
+  var isNaturalLanguagesIndex = /\/natural-languages\.html$/.test(path);
+  if (isNaturalLanguagesIndex) return;
+
+  var wrapper = document.createElement("div");
+  wrapper.className = "page-back-nav";
+
+  var button = document.createElement("button");
+  button.type = "button";
+  button.className = "page-back-button";
+  button.setAttribute("aria-label", "Go back to previous page");
+  button.textContent = "Back";
+
+  button.addEventListener("click", function () {
+    var sameOriginReferrer = false;
+    if (document.referrer) {
+      try {
+        sameOriginReferrer = new URL(document.referrer).origin === window.location.origin;
+      } catch (e) {
+        sameOriginReferrer = false;
+      }
+    }
+
+    if (sameOriginReferrer && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    var offsetMeta = document.querySelector('meta[name="quarto:offset"]');
+    var offset = offsetMeta ? offsetMeta.getAttribute("content") || "./" : "./";
+    window.location.href = offset + "index.html";
+  });
+
+  wrapper.appendChild(button);
+  main.appendChild(wrapper);
+});
+</script>
