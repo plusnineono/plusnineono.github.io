@@ -1,0 +1,31 @@
+---
+title: "Publications"
+---
+<div style="height: 20px;"></div>
+
+## Solid-State Defects
+
+### Peer-reviewed Papers
+* Spin squeezing in an ensemble of nitrogen-vacancy centers in diamond. Wu et al. incl. TO. [Nature 646, 74–80](https://www.nature.com/articles/s41586-025-09524-8) (2025).
+
+### Presentations
+* Quantum-Projection-Noise-Limited Readout in a Dense NV Ensemble at Room Temperature. TO et al. [DAMOP](https://schedule.aps.org/damop/2025/events/S00/76) (2025).
+* Spin squeezing in an ensemble of nitrogen-vacancy centers in diamond. Wu et al. incl. TO. [DAMOP](https://schedule.aps.org/damop/2025/events/S00/77) (2025).
+
+<div style="height: 20px;"></div>
+
+## Ultracold Molecules
+<!-- ### Preprints -->
+<!-- * Our SrOH-MOT paper has been published to PRL! (please see below) -->
+
+### Peer-reviewed Papers
+* Magneto-optical trapping of a heavy polyatomic molecule for precision measurement. Lasner et al. incl. TO. [Phys. Rev. Lett. 134, 083401](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.134.083401) (2025).
+* Zeeman-Sisyphus Deceleration for Heavy Molecules with Perturbed Excited-State Structure. Sawaoka et al. incl. TO. [Physical Review A 107 (2), 022810](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.107.022810) (2022).
+
+### Presentations
+* Magneto-optical Trapping of SrOH. Sawaoka et al. incl. TO. [DAMOP](https://meetings.aps.org/Meeting/DAMOP24/Session/F08.5) (2024).
+* Towards beyond-Standard Model searches with ultracold SrOH molecules. TO et al. [APS April Meeting](https://meetings.aps.org/Meeting/APR23/Session/E01.14) (2023).
+* Progress Towards Laser Cooled Polyatomic Molecules for Beyond-Standard-Model Physics Searches. Frenett et al. incl. TO. [DAMOP](https://meetings.aps.org/Meeting/DAMOP23/Session/V01.40) (2023).
+* Rovibrational Spectroscopy of SrOH For Laser Cooling. Frenett et al. incl. TO. [DAMOP](https://meetings.aps.org/Meeting/DAMOP23/Session/U07.5) (2023).
+* Progress toward an ultracold trap of SrOH molecules to probe fundamental constant variations and the electron electric dipole moment. Lasner et al. incl. TO. [DAMOP](https://meetings.aps.org/Meeting/DAMOP23/Session/U03.3) (2023).
+* 電子の永久電気双極子モーメント測定に向けた極低温SrOH分子源の開発. Sakamoto et al., incl. TO. [JPS Spring Meeting](https://onsite.gakkai-web.net/jps/jps_search/2023sp/data2/html/program01.html) (2023).

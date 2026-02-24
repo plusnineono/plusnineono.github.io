@@ -1,0 +1,188 @@
+---
+title: "Ugetsu (雨月)"
+fig-cap-location: top
+theme-cap-location: top
+---
+<div style="height: 20px;"></div>
+
+# Definition
+
+The opening <i>ugetsu</i> is the following.
+
+![](../renju_figs/screenshot-20250622234217.gif){width=35% fig-align="left"}
+
+# Theme: Triangular Defence
+
+Let's examine the following defense from white, which forms a 3x3 triangle.
+
+![](../renju_figs/screenshot-20250623002012.gif){#theme-1 width=35% fig-align="left"}
+
+Black already wins in this situation, with at most 43 moves. The best offense from black is the following.
+
+![](../renju_figs/screenshot-20250623002801.jpg){#fig-1 width=35% fig-align="left"}
+
+## Blocking a potential three
+
+A natural move from white is move 8 in the following, in which case black's move 9 making three is an appropriate response.
+
+![](../renju_figs/screenshot-20250623003031.jpg){#fig-2 width=35% fig-align="left"}
+
+Let's examine [@fig-2]. White has two ways to block the three. 
+
+### Blocking the top 
+If white blocks at the top, black should do the following move 11. 
+
+![](../renju_figs/screenshot-20250623003404.jpg){#fig-3 width=35% fig-align="left"}
+
+If white does not do anything, black can easily make a four-three:
+
+![](../renju_figs/screenshot-20250622231505.gif){width=35% fig-align="left"}
+
+White needs to block somewhere in the process. There are three ways in which white can complicate the situation. If white goes G7 and G10, it takes at most 24 moves for black to win. G8 also requires additional 22 moves for black to win. All the other moves result in black winning with at most 14 moves.
+
+#### Preventing four-three: white G7
+Let's consider the following defence from white.
+
+![](../renju_figs/screenshot-20250623003822.jpg){#fig-4 width=35% fig-align="left"}
+
+Then the following three moves should be memorized as a set (called 三手一組):
+
+![](../renju_figs/screenshot-20250623004038.jpg){#fig-5 width=35% fig-align="left"}
+
+The order of moves 13 and 15 does not matter as we shall see below. White has to block the three in row 10. If white blocks the middle, there is a following sequence:
+
+![](../renju_figs/screenshot-20250622231947.gif){#fig-6 width=35% fig-align="left"}
+
+Note that move 21 tries to complete a four-three, which white must block. Regardless of the position of this block in move 22, we arrive at move 25 in [@fig-6]. In the end, white needs to block the diagonal three, and regardless of the next move, there is a VCF from black. 
+
+If white blocks one of the edges in [@fig-5], black's moves become more straightforward. For example, if white blocks the right edge, black can proceed with the following sequence:
+
+![](../renju_figs/screenshot-20250622232024.gif){width=35% fig-align="left"}
+
+The position of the blocking move 18 does not matter; black gets a four-three no matter what. This is the same if white blocks the left edge in [@fig-5].
+
+![](../renju_figs/screenshot-20250622232052.gif){width=35% fig-align="left"}
+
+Going back to [@fig-4], the position of move 14 in the three-move-one-set can be different (the opposite end of the three that black is making with move 13). See [@fig-7] below. Again, white has to block the three made by move 15. 
+
+If white blocks in the middle, the following move 17 is clever.
+
+![](../renju_figs/screenshot-20250623005613.jpg){#fig-7 width=35% fig-align="left"}
+
+If white does not do any thing, black gets a four-three.
+
+![](../renju_figs/screenshot-20250622232324.gif){width=35% fig-align="left"}
+
+To prevent this, the following move 18 is the best since it makes a three for white, but black can easily eliminate it:
+
+![](../renju_figs/screenshot-20250622232414.gif){width=35% fig-align="left"}
+
+Then black can make a four-three no matter what:
+
+![](../renju_figs/screenshot-20250623010355.gif){width=35% fig-align="left"}
+![](../renju_figs/screenshot-20250623010423.gif){width=35% fig-align="left"}
+
+#### Preventing four-three: G10
+
+Another way to prevent the four-three by move 11 in [@fig-3] is the following.
+
+![](../renju_figs/screenshot-20250623011538.jpg){width=35% fig-align="left"}
+
+In this case, the following move 13 guarantees black's win within the next 22 moves.
+
+![](../renju_figs/screenshot-20250623011831.jpg){width=35% fig-align="left"}
+
+##### Blocking the bottom
+If white blocks the three at the bottom, move 15 in the figure below is an approproiate response. 
+
+![](../renju_figs/screenshot-20250623172457.jpg){width=35% fig-align="left"}
+
+The point here is that there are two ways to make a four-three from black.
+
+![](../renju_figs/screenshot-20250624163836.jpg){width=35% fig-align="left"}
+![](../renju_figs/screenshot-20250624163856.jpg){width=35% fig-align="left"}
+
+White cannot block both of them simultaneously, hence it's black's win.
+
+##### Blocking the top
+
+The following moves 15-17 converge the configuration to the case above.
+
+![](../renju_figs/screenshot-20250624164203.jpg){width=35% fig-align="left"}
+
+#### Preventing four-three: G8
+
+Coming soon!
+
+#### Preventing four-three: E10/I10
+
+In the following two cases, move 13 allows black to form a four-three.
+
+![](../renju_figs/screenshot-20250624164649.jpg){width=35% fig-align="left"}
+![](../renju_figs/screenshot-20250624164745.jpg){width=35% fig-align="left"}
+
+The rest is the same:
+
+![](../renju_figs/screenshot-20250624164827.jpg){width=35% fig-align="left"}
+
+#### Preventing four-three: I7
+
+![](../renju_figs/screenshot-20250624165531.jpg){width=35% fig-align="left"}
+
+The following move 13 is good. Whichever side of the three white blocks, black gets a four-three.
+
+![](../renju_figs/screenshot-20250624165427.jpg){width=35% fig-align="left"}
+![](../renju_figs/screenshot-20250624165444.jpg){width=35% fig-align="left"}
+
+
+#### Preventing four-three: G6
+
+The following is an interesting block from white.
+
+![](../renju_figs/screenshot-20250624165006.jpg){width=35% fig-align="left"}
+
+Unlike the previous cases, black has to play at the top of the cluster. One needs to remember the following two, depending on which side of a three white blocks in move 14.
+
+![](../renju_figs/screenshot-20250624165147.jpg){width=35% fig-align="left"}
+![](../renju_figs/screenshot-20250624165217.jpg){width=35% fig-align="left"}
+
+### Blocking the bottom
+
+Going back to [@fig-3], white can also block the three at the bottom. 
+
+![](../renju_figs/screenshot-20250624170725.jpg){width=35% fig-align="left"}
+
+This is easier to deal with for black than being blocked at the top. An appropriate response is making a three at the top of the cluster:
+
+![](../renju_figs/screenshot-20250624170825.jpg){width=35% fig-align="left"}
+
+#### Blocking three from right
+
+If white blocks the three at I10, black should go to G8. White has to block the vertical three, but black already seeks for a four-three on E10, which is impossible to prevent.
+
+![](../renju_figs/screenshot-20250624170640.jpg){width=35% fig-align="left"}
+
+#### Blocking three from left
+
+If white goes to E10, then black should go to G12 making a jumping three (飛び三). No matter where white blocks, black can make a four-three. In the case below, black an create a four-three at I10.
+
+![](../renju_figs/screenshot-20250624170522.jpg){width=35% fig-align="left"}
+
+On the other hand, in the following two cases, black can show a potential four-three at I10, which white has to block, and then black can make an actual one at E11.
+
+![](../renju_figs/screenshot-20250624170427.jpg){width=35% fig-align="left"}
+![](../renju_figs/screenshot-20250624170557.jpg){width=35% fig-align="left"}
+
+## Blocking another potential three
+
+White can also block the potential three from top left to bottom right.
+
+![](../renju_figs/screenshot-20250624172240.jpg){#fig-8 width=35% fig-align="left"}
+
+The appropriate response is F9.
+
+![](../renju_figs/screenshot-20250624172234.jpg){#fig-9 width=35% fig-align="left"}
+
+White has to block the three. White can go from top or bottom, and the complexity of the strategies after move 10 could be very different between the two.
+
+Coming soon!

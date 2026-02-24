@@ -1,193 +1,143 @@
 ---
-title: "Play Renju vs Computer"
+title: "Renju Dojo 連珠道場"
 page-layout: full
 format:
   html:
     toc: false
     code-fold: false
     smooth-scroll: true
+    sanitize: false
 ---
 
+```{=html}
 <div class="controls">
   <div class="row">
     <label>Play as:</label>
     <select id="side-select">
-      <option value="human-black">Black (forbidden moves apply)</option>
-      <option value="human-white" selected>White</option>
-    </select>
-    <label class="sp">AI level:</label>
-    <select id="level-select">
-      <option value="0">Fast</option>
-      <option value="1" selected>Normal</option>
-      <option value="2">Strong</option>
+      <option value="human-black" selected>Black (forbidden moves apply)</option>
+      <option value="human-white">White</option>
     </select>
     <button id="newgame">New Game</button>
     <button id="undo">Undo</button>
-    <button id="aigo">AI Move</button>
   </div>
-  <div id="status">Loading…</div>
+  <div id="status">Your move…</div>
 </div>
 
 <div class="board-wrap">
   <canvas id="board" width="640" height="640" aria-label="Renju board" role="img"></canvas>
 </div>
 
-<div class="help">
-  <details>
-    <summary>Rules this page enforces</summary>
-    <ul>
-      <li>Board size: 15×15. Exactly 5-in-a-row wins for Black; ≥5 wins for White. Black may not win by overline (6+).</li>
-      <li>Black forbidden moves: overline, double-three, double-four. If a legal move makes exactly five, Black wins even if it simultaneously forms threes/fours.</li>
-      <li>Opening rules like Swap / Soosõrv are <em>not</em> enforced here.</li>
-    </ul>
-  </details>
-</div>
-
 <style>
-:root {
-  --bg: #fafaf8; --grid: #c9a878; --star: #a07b3a; --black: #111; --white: #fafafa;
-  --accent: #0b6cff; --warn: #d95832; --ok: #0a7a27;
-}
-body { background: var(--bg); }
-.board-wrap { display:flex; justify-content:center; margin: 8px 0 24px; }
-.controls { max-width: 960px; margin: 0 auto 8px; padding: 8px 12px; }
-.controls .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.controls label { font-weight:600; }
-.controls .sp { margin-left: 6px; }
-#status { margin-top: 6px; font-weight:600; }
-button, select { border:1px solid #ddd; border-radius:10px; padding:6px 10px; background:#fff; cursor:pointer; }
-button:hover { box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
-.help { max-width:960px; margin: 0 auto 24px; color:#444; }
-summary { cursor:pointer; }
+:root { --bg:#fafaf8; --grid:#c9a878; --star:#a07b3a; }
+body { background: var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+.board-wrap{display:flex;justify-content:center;margin:8px 0 24px;padding:0 12px;max-width:100%;}
+#board{width:min(94vw,640px);height:auto;max-width:100%;touch-action:manipulation;}
+.controls{max-width:960px;margin:0 auto 8px;padding:8px 12px;}
+.controls .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.controls label{font-weight:600;}
+#status{margin-top:6px;font-weight:600;}
+button,select{border:1px solid #ddd;border-radius:10px;padding:6px 10px;background:#fff;cursor:pointer;}
+button:hover{box-shadow:0 1px 8px rgba(0,0,0,0.06);}
 </style>
 
 <script>
 (function(){
-  const N = 15; // board size
-  const EMPTY=0, BLACK=1, WHITE=2;
+  const N = 15; const EMPTY=0, BLACK=1, WHITE=2;
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
-  const MARGIN = 32; // px
-  const SIZE = canvas.width; // assume square
-  const CELL = (SIZE - 2*MARGIN)/(N-1);
+  const SIZE = canvas.width;
+  const MARGIN = 32, CELL = (SIZE - 2*MARGIN)/(N-1);
   const STAR_PTS = [[3,3],[3,11],[7,7],[11,3],[11,11]];
   const sideSelect = document.getElementById('side-select');
-  const levelSelect = document.getElementById('level-select');
   const statusEl = document.getElementById('status');
   const btnNew = document.getElementById('newgame');
   const btnUndo = document.getElementById('undo');
-  const btnAi = document.getElementById('aigo');
 
   let board, turn, history, winner, lastMove, humanPlays, aiPlays;
 
   function reset(){
     board = Array.from({length:N}, ()=>Array(N).fill(EMPTY));
-    history = [];
-    winner = null; lastMove = null;
-    turn = BLACK; // black starts
+    history = []; winner = null; lastMove = null; turn = BLACK;
     humanPlays = sideSelect.value === 'human-black' ? BLACK : WHITE;
-    aiPlays = humanPlays===BLACK? WHITE : BLACK;
+    aiPlays = (humanPlays===BLACK) ? WHITE : BLACK;
     draw();
-    status(`New game. You are ${humanPlays===BLACK?'Black':'White'}. ${humanPlays===WHITE?'Computer (Black) to move.':'Your move.'}`);
+    status(`New game. You are ${humanPlays===BLACK?'Black':'White'}. ${humanPlays===WHITE?'Computer (Black) to move.':'Your move…'}`);
     if (aiPlays===BLACK) aiMove();
   }
 
-  function toXY(ev) {
+  function toXY(ev){
     const rect = canvas.getBoundingClientRect();
-    const x = (ev.clientX - rect.left) * (canvas.width/rect.width);
-    const y = (ev.clientY - rect.top) * (canvas.height/rect.height);
-    // snap to nearest intersection
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (ev.clientX - rect.left) * scaleX;
+    const y = (ev.clientY - rect.top) * scaleY;
     let c = Math.round((x - MARGIN)/CELL);
     let r = Math.round((y - MARGIN)/CELL);
     if (r<0||r>=N||c<0||c>=N) return null;
     const px = MARGIN + c*CELL, py = MARGIN + r*CELL;
     const dist = Math.hypot(px-x, py-y);
-    if (dist>CELL*0.45) return null; // must click close
+    if (dist>CELL*0.45) return null;
     return {r, c};
   }
 
   function draw(){
-    // bg
     ctx.clearRect(0,0,SIZE,SIZE);
-    ctx.fillStyle = '#f2e5c7';
-    ctx.fillRect(0,0,SIZE,SIZE);
-    // grid
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid')||'#c9a878';
-    ctx.lineWidth = 1;
-    for (let i=0;i<N;i++){
-      const p = MARGIN + i*CELL;
-      ctx.beginPath(); ctx.moveTo(MARGIN, p); ctx.lineTo(SIZE-MARGIN, p); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(p, MARGIN); ctx.lineTo(p, SIZE-MARGIN); ctx.stroke();
-    }
-    // star points
+    ctx.fillStyle = '#f2e5c7'; ctx.fillRect(0,0,SIZE,SIZE);
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid')||'#c9a878'; ctx.lineWidth = 1;
+    for (let i=0;i<N;i++){ const p = MARGIN + i*CELL; ctx.beginPath(); ctx.moveTo(MARGIN, p); ctx.lineTo(SIZE-MARGIN, p); ctx.stroke(); }
+    for (let i=0;i<N;i++){ const p = MARGIN + i*CELL; ctx.beginPath(); ctx.moveTo(p, MARGIN); ctx.lineTo(p, SIZE-MARGIN); ctx.stroke(); }
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--star')||'#a07b3a';
-    STAR_PTS.forEach(([r,c])=>{
-      const x = MARGIN + c*CELL, y = MARGIN + r*CELL;
-      ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill();
-    });
-    // stones
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-      if (!board[r][c]) continue; const color = board[r][c];
-      drawStone(r,c,color);
-    }
-    // last move marker
-    if (lastMove){
-      const {r,c} = lastMove; const x=MARGIN+c*CELL, y=MARGIN+r*CELL;
-      ctx.strokeStyle = '#3a86ff'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(x,y, CELL*0.22, 0, Math.PI*2); ctx.stroke();
-    }
-    // winner banner
-    if (winner){
-      ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(0,SIZE/2-24,SIZE,48);
-      ctx.fillStyle = '#fff'; ctx.font = '700 22px system-ui, ui-sans-serif, -apple-system, Segoe UI, Roboto';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(`${winner===BLACK?'Black':'White'} wins!`, SIZE/2, SIZE/2);
-      ctx.restore();
-    }
+    STAR_PTS.forEach(([r,c])=>{ const x = MARGIN + c*CELL, y = MARGIN + r*CELL; ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); });
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++){ if (board[r][c]) drawStone(r,c,board[r][c]); }
+    if (lastMove){ const {r,c}=lastMove; const x=MARGIN+c*CELL, y=MARGIN+r*CELL; ctx.strokeStyle='#3a86ff'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,CELL*0.22,0,Math.PI*2); ctx.stroke(); }
+    if (winner){ ctx.save(); ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,SIZE/2-24,SIZE,48); ctx.fillStyle='#fff'; ctx.font='700 22px system-ui, ui-sans-serif, -apple-system, Segoe UI, Roboto'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(`${winner===BLACK?'Black':'White'} wins!`, SIZE/2, SIZE/2); ctx.restore(); }
   }
-
   function drawStone(r,c,color){
     const x = MARGIN + c*CELL, y = MARGIN + r*CELL, rad = CELL*0.32;
-    const grad = ctx.createRadialGradient(x-rad*0.3,y-rad*0.3,rad*0.2, x,y,rad);
-    if (color===BLACK){ grad.addColorStop(0,'#444'); grad.addColorStop(1,'#111'); }
-    else { grad.addColorStop(0,'#fafafa'); grad.addColorStop(1,'#d0d0d0'); }
-    ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2);
-    ctx.fillStyle = grad; ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.stroke();
+    const g = ctx.createRadialGradient(x-rad*0.3,y-rad*0.3,rad*0.2, x,y,rad);
+    if (color===BLACK){ g.addColorStop(0,'#444'); g.addColorStop(1,'#111'); } else { g.addColorStop(0,'#fafafa'); g.addColorStop(1,'#d0d0d0'); }
+    ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2); ctx.fillStyle=g; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.stroke();
+  }
+  function status(msg){ statusEl.textContent = msg; }
+  canvas.addEventListener('click', ev => { if (!winner){ const pos = toXY(ev); if (pos) humanTryMove(pos.r,pos.c); }});
+
+  // ---- Safe placement helpers ----
+  function placeIfLegal(color, r, c){
+    if (!inB(r,c) || board[r][c] !== EMPTY) return false;
+    if (color === BLACK){
+      const chk = forbiddenIfBlackMove(r,c);
+      if (chk.forbidden) return false;
+    }
+    doMove(r,c,color);
+    return true;
   }
 
-  function status(msg){ statusEl.textContent = msg; }
-
-  function onClick(ev){ if (winner) return; const pos = toXY(ev); if (!pos) return; humanTryMove(pos.r, pos.c); }
-
   function humanTryMove(r,c){
-    if (board[r][c]!==EMPTY) return;
     if (turn !== humanPlays) return;
-    const forb = (humanPlays===BLACK) ? forbiddenIfBlackMove(r,c) : null;
-    if (forb && forb.forbidden){ status(`Illegal for Black: ${forb.reason}. Try another move.`); return; }
-    doMove(r,c,humanPlays);
+    if (!placeIfLegal(humanPlays, r, c)){
+      status(humanPlays===BLACK ? 'Illegal for Black or occupied; try another.' : 'Occupied; try another.');
+      return;
+    }
     if (!winner) aiMove();
   }
 
   function doMove(r,c,color){
-    board[r][c] = color; lastMove = {r,c}; history.push({r,c,color});
-    // win check
+    board[r][c]=color; lastMove={r,c}; history.push({r,c,color});
     const lineLen = maxLineThrough(r,c,color);
-    if (color===BLACK){
-      if (lineLen===5) { winner = BLACK; }
-    } else {
-      if (lineLen>=5) { winner = WHITE; }
-    }
+    if (color===BLACK){ if (lineLen===5) winner=BLACK; } else { if (lineLen>=5) winner=WHITE; }
     turn = (color===BLACK) ? WHITE : BLACK;
     draw();
     status(winner ? `${winner===BLACK?'Black':'White'} wins!` : `${turn===humanPlays? 'Your' : 'Computer'} move…`);
   }
 
-  function undo(){ if (!history.length || winner) return; const steps = (history.length>=2)?2:1; for (let i=0;i<steps;i++){ const m=history.pop(); board[m.r][m.c]=EMPTY; }
-    winner=null; lastMove=history[history.length-1]||null; turn=BLACK; if (history.length){ const last=history[history.length-1]; turn = (last.color===BLACK)?WHITE:BLACK; }
-    draw(); status('Undid.'); }
+  function undo(){
+    if (!history.length || winner) return;
+    const steps = (history.length>=2)?2:1;
+    for (let i=0;i<steps;i++){ const m=history.pop(); board[m.r][m.c]=EMPTY; }
+    winner=null; lastMove=history[history.length-1]||null; turn=BLACK;
+    if (history.length){ const last=history[history.length-1]; turn=(last.color===BLACK)?WHITE:BLACK; }
+    draw(); status('Undid.');
+  }
 
   function maxLineThrough(r,c,color){
     let best=1; const dirs=[[1,0],[0,1],[1,1],[1,-1]];
@@ -198,17 +148,14 @@ summary { cursor:pointer; }
     }
     return best;
   }
-
   function inB(r,c){ return r>=0&&r<N&&c>=0&&c<N; }
 
-  // ===== Forbidden move detection (approximate but strong) =====
+  // --- Forbidden for Black ---
   function forbiddenIfBlackMove(r,c){
-    // simulate
     board[r][c]=BLACK;
     const len = maxLineThrough(r,c,BLACK);
-    if (len>5){ board[r][c]=EMPTY; return {forbidden:true, reason:'overline (6+ in a row)'}; }
+    if (len>5){ board[r][c]=EMPTY; return {forbidden:true, reason:'overline (6+)'}; }
     if (len===5){ board[r][c]=EMPTY; return {forbidden:false, reason:null}; }
-    // count double-fours and double-threes created involving the placed stone
     const {fours, threes} = countThreatsAt(r,c,BLACK);
     board[r][c]=EMPTY;
     if (fours>=2) return {forbidden:true, reason:'double-four'};
@@ -217,217 +164,284 @@ summary { cursor:pointer; }
   }
 
   function lineStringAround(r,c,color, dr,dc){
-    // build a 1D string with ., x(player), o(opponent) around (r,c)
-    const me = color, opp = (color===BLACK)?WHITE:BLACK;
-    let cells=[]; let coords=[];
-    // go back up to 10
+    const me=color; let cells=[], coords=[];
     let rr=r-10*dr, cc=c-10*dc; while(!inB(rr,cc)){ rr+=dr; cc+=dc; }
     for (; inB(rr,cc); rr+=dr,cc+=dc){
       coords.push([rr,cc]);
-      const v = board[rr][cc];
-      if (rr===r && cc===c) { cells.push('x'); }
+      const v=board[rr][cc];
+      if (rr===r && cc===c) cells.push('x');
       else if (v===EMPTY) cells.push('.');
       else if (v===me) cells.push('x');
       else cells.push('o');
     }
-    const s = cells.join('');
-    const idx = coords.findIndex(p=>p[0]===r&&p[1]===c);
-    return {s, idx};
+    const s=cells.join(''); const idx = coords.findIndex(p=>p[0]===r&&p[1]===c);
+    return {s, idx, coords};
   }
 
   function countThreatsAt(r,c,color){
-    const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-    let fours=0, threes=0;
+    const dirs=[[1,0],[0,1],[1,1],[1,-1]]; let fours=0, threes=0;
+    const fourPats  = [/\.xxxx\./g, /xxxx\./g, /\.xxxx/g, /xxx\.x/g, /x\.xxx/g, /xx\.xx/g];
+    const threePats = [/\.xxx\./g, /\.xx\.x\./g, /\.x\.xx\./g];
     for (const [dr,dc] of dirs){
       const {s, idx} = lineStringAround(r,c,color, dr,dc);
-      // FOUR patterns (any single-move 5): xxxx., .xxxx, xxx.x, x.xxx, xx.xx, .xxxx.
-      const fourPats = [/xxxx\./g,/\.xxxx/g,/xxx\.x/g,/x\.xxx/g,/xx\.xx/g,/\.xxxx\./g];
-      let hasFour=false; for (const re of fourPats){ let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length){ hasFour=true; break; } } if (hasFour) break; }
-      if (hasFour) fours += 1;
-      // FREE THREE patterns: .xxx., .xx.x., .x.xx.
-      const threePats = [/\.xxx\./g,/\.xx\.x\./g,/\.x\.xx\./g];
-      let local3=0; for (const re of threePats){ let m; while((m=re.exec(s))){ if (m.index<=idx && idx < m.index+m[0].length) local3++; } }
-      threes += local3;
+      let has4=false;
+      for (const re of fourPats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx<m.index+m[0].length){ has4=true; break; } } if (has4) break; }
+      if (has4){ fours++; continue; }
+      let has3=false;
+      for (const re of threePats){ re.lastIndex=0; let m; while((m=re.exec(s))){ if (m.index<=idx && idx<m.index+m[0].length){ has3=true; break; } } if (has3) break; }
+      if (has3) threes++;
     }
     return {fours, threes};
   }
 
-  // ===== AI =====
-  function aiMove(){ if (winner) return; if (turn!==aiPlays) return;
-    const depth = parseInt(levelSelect.value,10)===2?2:1; // 1-ply or 2-ply
-    const move = chooseMove(aiPlays, depth);
-    if (!move){ status('AI passes (no legal moves).'); turn = humanPlays; return; }
-    doMove(move.r, move.c, aiPlays);
+  function emptyCells(){ const cells=[]; for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]===EMPTY) cells.push({r,c}); return cells; }
+  function hasNeighbor(r,c,dist){
+    for (let dr=-dist; dr<=dist; dr++){
+      for (let dc=-dist; dc<=dist; dc++){
+        if (!dr && !dc) continue;
+        const rr=r+dr, cc=c+dc;
+        if (inB(rr,cc) && board[rr][cc]!==EMPTY) return true;
+      }
+    }
+    return false;
+  }
+  function stonesPlaced(){ for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]!==EMPTY) return true; return false; }
+
+  function localFreeThreeBlocksFrom(r,c, opp){
+    const dirs=[[0,1],[1,0],[1,1],[1,-1]]; const blocks=[]; const seen=new Set();
+    const re = /\.xxx\.|\.xx\.x\.|\.x\.xx\./g;
+    for (const [dr,dc] of dirs){
+      const {s, idx, coords} = lineStringAround(r,c, opp, dr,dc);
+      re.lastIndex = 0; let m;
+      while((m = re.exec(s))){
+        const start = m.index, pat = m[0];
+        const candidates = [];
+        if (pat === '.xxx.') { candidates.push(coords[start], coords[start+4]); }
+        else if (pat === '.xx.x.') { candidates.push(coords[start+3]); }
+        else if (pat === '.x.xx.') { candidates.push(coords[start+2]); }
+        if (start <= idx && idx <= start+4){
+          for (const [rr,cc] of candidates){
+            const key = rr+','+cc;
+            if (inB(rr,cc) && board[rr][cc]===EMPTY && !seen.has(key)){ seen.add(key); blocks.push({r:rr,c:cc}); }
+          }
+        }
+      }
+    }
+    return blocks;
   }
 
-  function chooseMove(color, depth, ban=[]) {
-    const opp = (color===BLACK)?WHITE:BLACK;
-    let cands = candidateMoves(color).filter(m=>!ban.some(b=>b.r===m.r && b.c===m.c));
-    if (!cands.length) return null;
-
-    // filter illegal black moves up-front (keep exact-five wins)
-    cands = cands.filter(m=>{
-      if (color!==BLACK) return true;
-      const chk = forbiddenIfBlackMove(m.r,m.c);
-      return !chk.forbidden; // forbiddenIfBlackMove already allows exact-five
-    });
-    if (!cands.length) return null;
-
-    // 1) Immediate win
-    for (const m of cands){ if (isWinningPlacement(color, m.r, m.c)) return m; }
-
-    // 2) Block opponent immediate win(s)
-    const oppWins = immediateWinningMoves(opp);
-    if (oppWins.length){
-      const blockers = cands.filter(m=>oppWins.some(w=>w.r===m.r && w.c===m.c));
-      if (blockers.length){
-        let best=blockers[0], bestScore=-1e18;
-        for (const m of blockers){ const s = evalMove(color, m.r, m.c); if (s>bestScore){best=m; bestScore=s;} }
-        return best;
+  function currentFreeThreeBlocks(opp){
+    const blocks=[]; const seen=new Set();
+    const re = /\.xxx\.|\.xx\.x\.|\.x\.xx\./g;
+    function considerLine(r0,c0,dr,dc){
+      let r=r0, c=c0; const coords=[], chars=[];
+      while (inB(r,c)){ coords.push([r,c]); const v=board[r][c]; chars.push(v===0?'.':(v===opp?'x':'o')); r+=dr; c+=dc; }
+      const s = chars.join(''); re.lastIndex=0; let m;
+      while((m=re.exec(s))){
+        const start=m.index, pat=m[0]; const cand=[];
+        if (pat === '.xxx.') { cand.push(coords[start], coords[start+4]); }
+        else if (pat === '.xx.x.') { cand.push(coords[start+3]); }
+        else if (pat === '.x.xx.') { cand.push(coords[start+2]); }
+        for (const [rr,cc] of cand){
+          const key=rr+','+cc;
+          if (board[rr][cc]===EMPTY && !seen.has(key)){ seen.add(key); blocks.push({r:rr,c:cc}); }
+        }
       }
-      let best=cands[0], bestScore=-1e18;
-      for (const m of cands){ const s = evalMove(color, m.r, m.c); if (s>bestScore){best=m; bestScore=s;} }
-      return best;
     }
+    for (let r=0;r<N;r++) considerLine(r,0,0,1);
+    for (let c=0;c<N;c++) considerLine(0,c,1,0);
+    for (let k=0;k<N;k++) considerLine(k,0,1,1);
+    for (let k=1;k<N;k++) considerLine(0,k,1,1);
+    for (let k=0;k<N;k++) considerLine(k,0,-1,1);
+    for (let k=1;k<N;k++) considerLine(N-1,k,-1,1);
+    return blocks;
+  }
 
-    // 3) Heuristic + shallow lookahead
-    const withScore = cands.map(m=>({m, s: evalMove(color, m.r, m.c)}));
-    withScore.sort((a,b)=>b.s-a.s);
-    const topK = Math.min(withScore.length, depth>=2?16:10);
+  function evalMove(color, r, c){
+    if (!inB(r,c) || board[r][c]!==EMPTY) return -1e18;
+    board[r][c]=color;
+    const len = maxLineThrough(r,c,color);
+    const t = countThreatsAt(r,c,color);
+    let sc = 0;
+    if ((color===BLACK && len===5) || (color===WHITE && len>=5)) sc += 1e7;
+    sc += 150*len + 5200*t.fours + 1600*t.threes;
+    const dx = Math.abs(c - 7), dy = Math.abs(r - 7);
+    sc += 40 * (7 - Math.max(dx,dy));
+    board[r][c]=EMPTY;
+    return sc;
+  }
 
-    let best = withScore[0].m, bestValue = -1e18;
-    for (let i=0;i<topK;i++){
-      const {m, s} = withScore[i];
-      // simulate
-      board[m.r][m.c]=color;
-      history.push({r:m.r,c:m.c,color});
-      const savedLast = lastMove; lastMove = {r:m.r,c:m.c};
-
-      let value = s;
-      if (depth>=2){
-        // opponent replies
-        const reply = chooseBestReply(opp, 1);
-        value -= reply.score * 0.9; // discount
+  function candidateMoves(color){
+    if (!stonesPlaced()) return [{r:7,c:7}];
+    const near=[]; const seen=new Set();
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+      if (board[r][c]===EMPTY && hasNeighbor(r,c,2)){
+        const k=r+','+c; if (!seen.has(k)){ seen.add(k); near.push({r,c}); }
       }
+    }
+    const pool = near.length ? near : emptyCells();
+    const scored = pool.map(m => ({m, s: evalMove(color, m.r, m.c)}))
+                       .sort((a,b)=> b.s - a.s)
+                       .slice(0, 28)
+                       .map(o=>o.m);
+    return scored;
+  }
 
-      // revert
-      lastMove = savedLast; history.pop(); board[m.r][m.c]=EMPTY;
+  function safeLegal(color, r, c){
+    if (board[r][c] !== EMPTY) return false;
+    return color===WHITE || !forbiddenIfBlackMove(r,c).forbidden;
+  }
 
-      if (value>bestValue){ best=m; bestValue=value; }
+  const TT = new Map();
+
+  function aiMove(){
+    if (winner || turn!==aiPlays) return;
+    const thinkMs = 1800;
+    status('Computer thinking…');
+
+    const watchdog = setTimeout(()=>{
+      const cands = candidateMoves(aiPlays).filter(m=> safeLegal(aiPlays, m.r, m.c));
+      for (const m of cands){ if (placeIfLegal(aiPlays, m.r, m.c)) return; }
+    }, thinkMs + 700);
+
+    setTimeout(()=>{
+      try {
+        const me = aiPlays, opp = (me===BLACK)?WHITE:BLACK;
+
+        const myWin = immediateWinningMovesAll(me);
+        for (const m of myWin){ if (placeIfLegal(me, m.r, m.c)){ clearTimeout(watchdog); return; } }
+
+        const oppWins = immediateWinningMovesAll(opp);
+        const blockers = oppWins.filter(mm=> safeLegal(me, mm.r, mm.c));
+        for (const m of blockers){ if (placeIfLegal(me, m.r, m.c)){ clearTimeout(watchdog); return; } }
+
+        if (history.length && history[history.length-1].color===opp){
+          const h = history[history.length-1];
+          let localBlocks = localFreeThreeBlocksFrom(h.r, h.c, opp).filter(mm => safeLegal(me, mm.r, mm.c));
+          localBlocks.sort((a,b)=> (Math.abs(a.r-7)+Math.abs(a.c-7)) - (Math.abs(b.r-7)+Math.abs(b.c-7)));
+          for (const m of localBlocks){ if (placeIfLegal(me, m.r, m.c)){ clearTimeout(watchdog); return; } }
+        }
+        let blocks = currentFreeThreeBlocks(opp).filter(mm => safeLegal(me, mm.r, mm.c));
+        blocks.sort((a,b)=> (Math.abs(a.r-7)+Math.abs(a.c-7)) - (Math.abs(b.r-7)+Math.abs(b.c-7)));
+        for (const m of blocks){ if (placeIfLegal(me, m.r, m.c)){ clearTimeout(watchdog); return; } }
+
+        const move = bestMoveTimed(me, thinkMs);
+        clearTimeout(watchdog);
+        if (move && placeIfLegal(me, move.r, move.c)) return;
+
+        const cands = candidateMoves(me).filter(mm=> safeLegal(me, mm.r, mm.c));
+        for (const m of cands){ if (placeIfLegal(me, m.r, m.c)) return; }
+        status('AI passes (no legal moves).'); turn = humanPlays;
+      } catch(e){
+        console.error('AI error:', e);
+        clearTimeout(watchdog);
+        const cands = candidateMoves(aiPlays).filter(mm=> safeLegal(aiPlays, mm.r, mm.c));
+        for (const m of cands){ if (placeIfLegal(aiPlays, m.r, m.c)) return; }
+        status('AI error; skipping move.'); turn = humanPlays;
+      }
+    }, 10);
+  }
+
+  function bestMoveTimed(color, ms){
+    const start = performance.now(); const deadline = start + ms;
+    let best=null;
+    const winNow = immediateWinningMovesAll(color)[0]; if (winNow) return winNow;
+    TT.clear();
+    for (let depth=2; depth<=8; depth++){
+      const res = negamaxTT(color, depth, -1e18, 1e18, null, deadline);
+      if (res.timedOut) break;
+      if (res.move){ best = res.move; }
+      if (performance.now()>deadline) break;
     }
     return best;
   }
 
-  function chooseBestReply(color, depth){
-    const opp = (color===BLACK)?WHITE:BLACK;
-    const cands = candidateMoves(color).filter(m=> color!==BLACK || !forbiddenIfBlackMove(m.r,m.c).forbidden);
-    if (!cands.length) return {move:null, score:0};
-
-    for (const m of cands){ if (isWinningPlacement(color, m.r, m.c)) return {move:m, score: 1e6}; }
-
-    let best = cands[0], bestS = -1e18;
-    for (const m of cands){ const s = evalMove(color, m.r, m.c); if (s>bestS){ best = m; bestS = s; } }
-    return {move: best, score: bestS};
+  function boardKey(color, depth){
+    let s=''; for (let r=0;r<N;r++) for (let c=0;c<N;c++) s += board[r][c];
+    return s + '|' + color + '|' + depth;
   }
 
+  function negamaxTT(color, depth, alpha, beta, last, deadline){
+    if (performance.now()>deadline) return {score:0, move:null, timedOut:true};
+    const opp = (color===BLACK)?WHITE:BLACK;
+
+    if (last){
+      const len = maxLineThrough(last.r,last.c,last.color);
+      const lastWon = (last.color===BLACK) ? (len===5) : (len>=5);
+      if (lastWon) return {score: -999999 + depth, move:null, timedOut:false};
+    }
+    if (depth===0){ return {score: staticEval(color), move:null, timedOut:false}; }
+
+    const key = boardKey(color, depth); const probed = TT.get(key);
+    if (probed && probed.depth>=depth){
+      if (probed.flag==='EXACT') return {score: probed.score, move: probed.best, timedOut:false};
+      if (probed.flag==='LOWER' && probed.score>alpha) alpha = probed.score;
+      if (probed.flag==='UPPER' && probed.score<beta) beta = probed.score;
+      if (alpha>=beta) return {score: probed.score, move: probed.best, timedOut:false};
+    }
+
+    let cands = candidateMoves(color).filter(mm=> safeLegal(color, mm.r, mm.c));
+    if (!cands.length) return {score:0, move:null, timedOut:false};
+
+    const winners=[]; const others=[];
+    for (const m of cands){ if (isWinningPlacement(color,m.r,m.c)) winners.push(m); else others.push(m); }
+    others.sort((a,b)=> evalMove(color,b.r,b.c) - evalMove(color,a.r,a.c));
+    cands = winners.concat(others);
+
+    let best=null; const origAlpha=alpha;
+    for (const m of cands){
+      board[m.r][m.c]=color;
+      const res = negamaxTT(opp, depth-1, -beta, -alpha, {r:m.r,c:m.c,color}, deadline);
+      board[m.r][m.c]=EMPTY;
+      if (res.timedOut) return {score:0, move:best, timedOut:true};
+      const val = -res.score;
+      if (val>alpha){ alpha=val; best=m; }
+      if (alpha>=beta) break;
+    }
+    const entry={depth, score:alpha, best, flag:(alpha<=origAlpha?'UPPER': (alpha>=beta?'LOWER':'EXACT'))};
+    TT.set(key, entry);
+    return {score: alpha, move: best, timedOut:false};
+  }
+
+  function staticEval(pov){
+    const sb = sideScore(BLACK); const sw = sideScore(WHITE); const base = sb - sw;
+    return (pov===BLACK? 1 : -1) * base;
+  }
+  function sideScore(color){
+    let s=0; const opp=(color===BLACK)?WHITE:BLACK;
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+      if (board[r][c]===color){
+        const len = maxLineThrough(r,c,color);
+        const {fours, threes} = countThreatsAt(r,c,color);
+        if (color===BLACK){ s += (len>=4?1500:0) + 135*len + 6000*fours + 1700*threes; }
+        else { s += (len>=4?1700:0) + 145*len + 5200*fours + 1500*threes; }
+      }
+      if (board[r][c]===opp){ const {threes} = countThreatsAt(r,c,opp); s += 450*threes; }
+    }
+    return s;
+  }
   function isWinningPlacement(color, r, c){
     if (board[r][c]!==EMPTY) return false;
-    board[r][c]=color;
-    const len = maxLineThrough(r,c,color);
-    let win=false;
-    if (color===BLACK) win = (len===5); else win = (len>=5);
-    if (color===BLACK && !win){
-      const chk = forbiddenIfBlackMove(r,c);
-      if (chk.forbidden) win = false;
-    }
-    board[r][c]=EMPTY;
-    return win;
+    board[r][c]=color; const len = maxLineThrough(r,c,color);
+    let win = (color===BLACK? (len===5) : (len>=5));
+    if (color===BLACK && !win){ const chk = forbiddenIfBlackMove(r,c); if (chk.forbidden) win = false; }
+    board[r][c]=EMPTY; return win;
   }
-
-  function immediateWinningMoves(color){
-    const out=[]; const cands = candidateMoves(color);
-    for (const m of cands){
-      if (color===BLACK && forbiddenIfBlackMove(m.r,m.c).forbidden) continue;
-      if (isWinningPlacement(color, m.r, m.c)) out.push(m);
+  function immediateWinningMovesAll(color){
+    const out=[];
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+      if (board[r][c]!==EMPTY) continue;
+      if (color===BLACK && forbiddenIfBlackMove(r,c).forbidden) continue;
+      if (isWinningPlacement(color, r, c)) out.push({r,c});
     }
     return out;
   }
 
-  function evalMove(color, r, c){
-    const opp = (color===BLACK)?WHITE:BLACK;
-    if (board[r][c]!==EMPTY) return -1e9;
-    if (color===BLACK){ const chk = forbiddenIfBlackMove(r,c); if (chk.forbidden) return -1e9; }
+  btnNew.addEventListener('click', reset);
+  btnUndo.addEventListener('click', undo);
+  sideSelect.addEventListener('change', reset);
 
-    board[r][c]=color;
-    const len = maxLineThrough(r,c,color);
-    const {fours, threes} = countThreatsAt(r,c,color);
-
-    let oppThreat = 0;
-    const oppCands = candidateMoves(opp);
-    for (const m of oppCands){
-      if (opp===BLACK && forbiddenIfBlackMove(m.r,m.c).forbidden) continue;
-      board[m.r][m.c]=opp; const l = maxLineThrough(m.r,m.c,opp); board[m.r][m.c]=EMPTY;
-      const win = (opp===BLACK? (l===5) : (l>=5));
-      if (win) { oppThreat += 1; }
-    }
-
-    const center = 7; const dist = Math.abs(r-center)+Math.abs(c-center);
-
-    let score = 0;
-    if (color===BLACK) {
-      score += 500* (len===4?1:0) + 80*len;
-      score += 12000*fours + 2600*threes;
-    } else {
-      score += 600* (len>=4?1:0) + 90*len;
-      score += 10000*fours + 2200*threes;
-    }
-    score += 40*(10 - Math.min(10, dist));
-    score -= 15000 * oppThreat;
-
-    board[r][c]=EMPTY;
-    return score;
-  }
-
-  function candidateMoves(color){
-    let hasStone=false; let minR=N, minC=N, maxR=-1, maxC=-1;
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (board[r][c]!==EMPTY){
-      hasStone=true; if (r<minR) minR=r; if (c<minC) minC=c; if (r>maxR) maxR=r; if (c>maxC) maxC=c;
-    }
-    const set = new Set(); const res=[];
-    if (!hasStone){ return [{r:7,c:7}]; }
-    minR=Math.max(0,minR-2); minC=Math.max(0,minC-2); maxR=Math.min(N-1,maxR+2); maxC=Math.min(N-1,maxC+2);
-    for (let r=minR;r<=maxR;r++){
-      for (let c=minC;c<=maxC;c++){
-        if (board[r][c]!==EMPTY) continue;
-        let near=false; for (let dr=-2; dr<=2 && !near; dr++) for (let dc=-2; dc<=2 && !near; dc++){
-          const rr=r+dr, cc=c+dc; if (inB(rr,cc) && board[rr][cc]!==EMPTY) near=true;
-        }
-        if (!near) continue;
-        const key=r+','+c; if (set.has(key)) continue; set.add(key);
-        res.push({r,c});
-      }
-    }
-    const center=7;
-    res.sort((a,b)=>{
-      const dlmA = lastMove? Math.abs(a.r-lastMove.r)+Math.abs(a.c-lastMove.c): 0;
-      const dlmB = lastMove? Math.abs(b.r-lastMove.r)+Math.abs(b.c-lastMove.c): 0;
-      if (dlmA!==dlmB) return dlmA-dlmB;
-      const da = Math.abs(a.r-center)+Math.abs(a.c-center);
-      const db = Math.abs(b.r-center)+Math.abs(b.c-center);
-      return da-db;
-    });
-    return res;
-  }
-
-  // ===== Wiring =====
-  canvas.addEventListener('click', onClick);
-  btnNew.addEventListener('click', ()=> reset());
-  btnUndo.addEventListener('click', ()=> undo());
-  btnAi.addEventListener('click', ()=> aiMove());
-  sideSelect.addEventListener('change', ()=> reset());
-  levelSelect.addEventListener('change', ()=> status(`AI level set to ${levelSelect.options[levelSelect.selectedIndex].text}.`));
-
-  // boot
   reset();
 })();
 </script>
+```

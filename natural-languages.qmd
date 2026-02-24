@@ -1,0 +1,49 @@
+---
+title: "Natural Languages"
+format:
+  html:
+    toc: true
+    toc-expand: 1
+---
+<div style="height: 20px;"></div>
+
+## English Essays
+In progress!
+<!--
+### Impressionists in Boston
+<div style="height: 20px;"></div>
+[In Progress!](impressionism.qmd)
+-->
+<div style="height: 20px;"></div>
+
+## Japanese Essays
+### アメリカのバナナは下からむく
+<div style="height: 20px;"></div>
+
+[アメリカのバナナ](usbanana.qmd)
+
+[ケンブリッジについて](cambridge.qmd)
+
+[ローガン国際空港](logan.qmd)
+
+[寮について](harvard-houses.qmd)
+
+<div style="height: 20px;"></div>
+### 旅行記
+<div style="height: 20px;"></div>
+
+[ミネアポリスの話](minneapolis.qmd)
+
+[白浜の話](shirahama.qmd)
+
+[家島諸島の話](ieshima.qmd)
+
+[バークレーの話](berkeley.qmd)
+
+<div style="height: 20px;"></div>
+### 坂の上のワニ
+<div style="height: 20px;"></div>
+
+[プロローグ](wani_prologue.qmd)　(Sep 21st, 2025)
+
+[カラスが鳴く （あるいは、物理の話を始めるとき、何の話から始めるべきだろうか）](wani_crowphysics.qmd) (Sep 21st, 2025)
