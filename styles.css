@@ -40,30 +40,59 @@ body {
   font-weight: 600;
 }
 
+.navbar-nav {
+  align-items: center;
+}
+
+.navbar-nav .nav-item {
+  display: flex;
+  align-items: center;
+}
+
 .navbar-nav .nav-link {
   color: var(--ink-muted);
   font-weight: 500;
-  line-height: 1.2;
-  display: inline-flex;
+  line-height: 1.15;
+  display: flex;
   align-items: center;
+  position: relative;
   padding-top: 0.55rem;
   padding-bottom: 0.55rem;
-  border-bottom: 2px solid transparent;
 }
 
-.navbar-nav .nav-link:hover {
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
   color: var(--accent);
 }
 
 .navbar-nav .nav-link.active {
-  color: var(--ink-muted);
   font-weight: 500;
-  border-bottom-color: rgba(122, 75, 45, 0.45);
 }
 
 .navbar-nav .nav-link .menu-text {
   display: block;
-  line-height: 1.2;
+  line-height: 1.1;
+  transform: translateY(0.02em);
+}
+
+/* Optical correction: "Home" has no descenders, so it reads slightly high */
+.navbar-nav .nav-link[href="./index.html"] .menu-text {
+  transform: translateY(0.09em);
+}
+
+.navbar-nav .nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.2rem;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.navbar-nav .nav-link.active::after {
+  background: rgba(122, 75, 45, 0.42);
 }
 
 #quarto-sidebar,
