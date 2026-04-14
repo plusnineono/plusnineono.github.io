@@ -43,7 +43,6 @@
   .winRateFillWhite { background: linear-gradient(90deg, #ffffff, #d8dee7); transition: width 180ms ease; }
   .winRateLegend { width: min(100%, 300px); display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .winRateValue { font-size: 38px; font-weight: 800; line-height: 1; margin-top: 14px; }
-  .winRateMeta { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.4; }
   .cand { margin-top: 10px; font-size: 13px; line-height: 1.55; }
   .hidden { display: none; }
   .footer { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.45; }
@@ -95,7 +94,6 @@
           <span id="winRateWhiteLabel">White 50%</span>
         </div>
         <div id="winRateVal" class="winRateValue">Even</div>
-        <div id="winRateMeta" class="winRateMeta">Black 50% • White 50%</div>
       </div>
     </div>
     <div id="liveEvalPanel" class="hidden">
@@ -103,7 +101,6 @@
       <div id="cand" class="cand">No search yet.</div>
     </div>
     <div id="errBox" class="cand" style="margin-top:10px;color:#ffb4b4;"></div>
-    <div class="footer">Engine stack: opening book → immediate tactical wins/forced defenses → limited forcing-sequence solver → iterative-deepening alpha-beta with transposition table and tactical candidate ordering.</div>
   </div>
 </div>
 <script>
@@ -125,7 +122,6 @@
   const winRateBlackLabel = document.getElementById('winRateBlackLabel');
   const winRateWhiteLabel = document.getElementById('winRateWhiteLabel');
   const winRateVal = document.getElementById('winRateVal');
-  const winRateMeta = document.getElementById('winRateMeta');
   const candEl = document.getElementById('cand');
   const errBox = document.getElementById('errBox');
   const newGameBtn = document.getElementById('newGameBtn');
@@ -432,7 +428,7 @@
     const probability = 1 / (1 + Math.exp(-1.2 * normalized));
     return Math.max(1, Math.min(99, Math.round(probability * 100)));
   }
-  function renderWinningRate(blackRate, meta){
+  function renderWinningRate(blackRate){
     const whiteRate = 100 - blackRate;
     winRateBlack.style.width = `${blackRate}%`;
     winRateWhite.style.width = `${whiteRate}%`;
@@ -448,14 +444,13 @@
       winRateVal.textContent = 'Even';
       winRateVal.style.color = 'var(--text)';
     }
-    winRateMeta.textContent = meta;
   }
   async function refreshWinningRate(){
     const ticket = ++winRateTicket;
-    if(game.result===BLACK){ renderWinningRate(100, 'Black 100% • White 0%'); return; }
-    if(game.result===WHITE){ renderWinningRate(0, 'Black 0% • White 100%'); return; }
+    if(game.result===BLACK){ renderWinningRate(100); return; }
+    if(game.result===WHITE){ renderWinningRate(0); return; }
 
-    renderWinningRate(50, `Calculating best ${colorName(game.turn)} move...`);
+    renderWinningRate(50);
     await new Promise(r => setTimeout(r, 0));
     if(ticket !== winRateTicket) return;
 
@@ -470,7 +465,7 @@
 
     if(probe.result){
       const blackRate = probe.result===BLACK ? 100 : 0;
-      renderWinningRate(blackRate, `Definite winning path found for ${colorName(probe.result)}.`);
+      renderWinningRate(blackRate);
       return;
     }
 
@@ -481,7 +476,7 @@
       if(ticket !== winRateTicket) return;
       if(sideToMoveWins){
         const blackRate = sideToMove===BLACK ? 100 : 0;
-        renderWinningRate(blackRate, `Definite winning path found for ${colorName(sideToMove)}.`);
+        renderWinningRate(blackRate);
         return;
       }
 
@@ -491,14 +486,14 @@
       if(ticket !== winRateTicket) return;
       if(otherSideWins){
         const blackRate = otherSide===BLACK ? 100 : 0;
-        renderWinningRate(blackRate, `Definite winning path found for ${colorName(otherSide)}.`);
+        renderWinningRate(blackRate);
         return;
       }
     }
 
     const blackScore = evaluateBoard(probe, BLACK);
     const blackRate = scoreToBlackWinRate(blackScore, probe.result);
-    renderWinningRate(blackRate, `Best-play outlook: Black ${blackRate}% • White ${100-blackRate}%.`);
+    renderWinningRate(blackRate);
   }
   function updateResultBanner(){
     resultBanner.className = 'resultBanner';
