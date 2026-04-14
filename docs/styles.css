@@ -196,8 +196,8 @@ li + li {
 
 hr {
   border: 0;
-  border-top: 1px solid rgba(122, 75, 45, 0.2);
-  margin: 1.4rem 0;
+  border-top: 3px solid rgba(122, 75, 45, 0.34);
+  margin: 1.6rem 0;
 }
 
 a {
