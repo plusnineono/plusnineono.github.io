@@ -349,26 +349,56 @@
       score += 2e6 * longest + 3e7 * fours + 2e7 * threes + 5e5 * open3 + 2e5 * semi3 + 1e7 * blockFours + 2e6 * blockThrees;
       return {legal:true, tag, score, fours, threes, blockFours, blockThrees};
     }
-    generateCandidateMoves(color=this.turn, limit=32){
+    generateCandidateMoves(color=this.turn, limit=32, includeGlobalTactics=false){
       const moves = [];
-      if(this.history.length===0) return [{x:7,y:7,score:1e9,tag:'book-center'}];
       const seen = new Set();
-      const radius = this.history.length < 8 ? 2 : 2;
-      for(const m of this.history){
-        for(let yy=Math.max(0,m.y-radius); yy<=Math.min(SIZE-1,m.y+radius); yy++){
-          for(let xx=Math.max(0,m.x-radius); xx<=Math.min(SIZE-1,m.x+radius); xx++){
+      const pushMove = (x, y, cl) => {
+        const id = idx(x, y);
+        if(seen.has(id)) return;
+        seen.add(id);
+        moves.push({x, y, score:cl.score, tag:cl.tag});
+      };
+      if(this.history.length===0) return [{x:7,y:7,score:1e9,tag:'book-center'}];
+
+      if(includeGlobalTactics){
+        for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) if(this.get(x,y)===EMPTY){
+          const cl = this.classifyMove(x,y,color);
+          if(!cl.legal) continue;
+          if(['win','block-win','double-four','four','double-three','three','block-four','block-three'].includes(cl.tag)) pushMove(x, y, cl);
+        }
+      }
+
+      const radius = this.history.length < 6 ? 3 : 2;
+      const focus = this.lastMove ? [this.lastMove, ...this.history] : this.history;
+      for(const m of focus){
+        const localRadius = this.lastMove && m === this.lastMove ? radius + 1 : radius;
+        for(let yy=Math.max(0,m.y-localRadius); yy<=Math.min(SIZE-1,m.y+localRadius); yy++){
+          for(let xx=Math.max(0,m.x-localRadius); xx<=Math.min(SIZE-1,m.x+localRadius); xx++){
             if(this.get(xx,yy)!==EMPTY) continue;
-            const id = idx(xx,yy); if(seen.has(id)) continue; seen.add(id);
             if(!this.neighborsWithin(xx,yy,2)) continue;
             const cl = this.classifyMove(xx,yy,color);
             if(!cl.legal) continue;
-            moves.push({x:xx,y:yy,score:cl.score, tag:cl.tag});
+            pushMove(xx, yy, cl);
+          }
+        }
+      }
+      if(moves.length < Math.min(10, limit)){
+        for(const m of this.history){
+          for(let yy=Math.max(0,m.y-4); yy<=Math.min(SIZE-1,m.y+4); yy++){
+            for(let xx=Math.max(0,m.x-4); xx<=Math.min(SIZE-1,m.x+4); xx++){
+              if(this.get(xx,yy)!==EMPTY) continue;
+              if(!this.neighborsWithin(xx,yy,3)) continue;
+              const cl = this.classifyMove(xx,yy,color);
+              if(!cl.legal) continue;
+              pushMove(xx, yy, cl);
+            }
           }
         }
       }
       if(!moves.length){
         for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) if(this.get(x,y)===EMPTY){
-          const cl = this.classifyMove(x,y,color); if(cl.legal) moves.push({x,y,score:cl.score,tag:cl.tag});
+          const cl = this.classifyMove(x,y,color);
+          if(cl.legal) pushMove(x, y, cl);
         }
       }
       moves.sort((a,b)=>b.score-a.score);
@@ -400,7 +430,7 @@
 
   const game = new Game();
   let humanColor = BLACK, engineColor = WHITE, searching = false;
-  const MAX_SEARCH_DEPTH = 12;
+  const MAX_SEARCH_DEPTH = 14;
   let winRateTicket = 0;
   let liveEvalEnabled = false;
 
@@ -572,34 +602,37 @@
 
   function findImmediateWins(g, color){
     const wins = [];
-    const moves = g.generateCandidateMoves(color, 24);
-    for(const m of moves){
-      g.place(m.x,m.y,color);
+    for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) if(g.get(x,y)===EMPTY){
+      if(color===BLACK && !g.isLegalMove(x,y,color)) continue;
+      g.place(x,y,color);
       const won = g.result===color;
       g.undo();
-      if(won) wins.push(m);
+      if(won) wins.push({x, y, score:centerBonus(x,y), tag:'win'});
     }
+    wins.sort((a,b)=>b.score-a.score);
     return wins;
   }
 
   function forcedDefenseSet(g, color){
     const oppWins = findImmediateWins(g, other(color));
     if(!oppWins.length) return null;
-    const need = new Map();
-    for(const m of oppWins) need.set(`${m.x},${m.y}`, m);
-    const legal = g.generateCandidateMoves(color, 28);
     const defenders = [];
-    for(const m of legal){
-      g.place(m.x,m.y,color);
+    for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) if(g.get(x,y)===EMPTY){
+      if(color===BLACK && !g.isLegalMove(x,y,color)) continue;
+      g.place(x,y,color);
       const theirWins = findImmediateWins(g, other(color));
       g.undo();
-      if(!theirWins.length) defenders.push(m);
+      if(!theirWins.length){
+        const cl = g.classifyMove(x,y,color);
+        defenders.push({x, y, score:cl.score, tag:cl.tag});
+      }
     }
+    defenders.sort((a,b)=>b.score-a.score);
     return {threats:oppWins, defenders};
   }
 
   function forcingMoves(g, color){
-    return g.generateCandidateMoves(color, 20).filter(m => ['win','block-win','double-four','four','double-three','three','block-four'].includes(m.tag));
+    return g.generateCandidateMoves(color, 28, true).filter(m => ['win','block-win','double-four','four','double-three','three','block-four','block-three'].includes(m.tag));
   }
 
   function canForceWin(g, attacker, sideToMove, depth, deadline, maxWidth=8){
@@ -660,6 +693,61 @@
     return null;
   }
 
+  function boardLines(g){
+    const lines = [];
+    for(let y=0;y<SIZE;y++){
+      let s = '';
+      for(let x=0;x<SIZE;x++) s += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      lines.push(s);
+    }
+    for(let x=0;x<SIZE;x++){
+      let s = '';
+      for(let y=0;y<SIZE;y++) s += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      lines.push(s);
+    }
+    for(let start=0; start<SIZE; start++){
+      let s1 = '', s2 = '';
+      for(let x=start, y=0; x<SIZE && y<SIZE; x++, y++) s1 += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      for(let x=0, y=start; x<SIZE && y<SIZE; x++, y++) s2 += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      if(s1.length >= 5) lines.push(s1);
+      if(start > 0 && s2.length >= 5) lines.push(s2);
+    }
+    for(let start=0; start<SIZE; start++){
+      let s1 = '', s2 = '';
+      for(let x=start, y=0; x>=0 && y<SIZE; x--, y++) s1 += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      for(let x=SIZE-1, y=start; x>=0 && y<SIZE; x--, y++) s2 += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      if(s1.length >= 5) lines.push(s1);
+      if(start > 0 && s2.length >= 5) lines.push(s2);
+    }
+    return lines;
+  }
+
+  function countOccurrences(line, pattern){
+    let total = 0;
+    for(let i=0;i<=line.length-pattern.length;i++) if(line.slice(i, i+pattern.length)===pattern) total++;
+    return total;
+  }
+
+  function patternScoreForColor(lines, color){
+    const mine = color===BLACK ? 'B' : 'W';
+    const theirs = color===BLACK ? 'W' : 'B';
+    const patterns = [
+      {score: 4.0e8, list: ['EBBBBE']},
+      {score: 1.3e8, list: ['EBBBBW', 'WBBBBE', 'EBWBBBE', 'EBBBWBE', 'EBBWBBE']},
+      {score: 2.5e7, list: ['EEBBBE', 'EBBBEE', 'EBBEBE', 'EBEBBE']},
+      {score: 8.0e6, list: ['EEBBE', 'EBBEE', 'EEBEBE', 'EBEEBE']},
+      {score: 9.0e5, list: ['EEBBEE', 'EEBEBEE']}
+    ];
+    let score = 0;
+    for(const raw of lines){
+      const line = raw.replaceAll(mine, 'B').replaceAll(theirs, 'W');
+      for(const entry of patterns){
+        for(const p of entry.list) score += entry.score * countOccurrences(line, p);
+      }
+    }
+    return score;
+  }
+
   function evaluateBoard(g, perspective){
     if(g.result===perspective) return 1e12;
     if(g.result===other(perspective)) return -1e12;
@@ -685,7 +773,10 @@
         else if(len===2 && openCount===2) score += sign*w.two;
       }
     }
-    const my = g.generateCandidateMoves(perspective, 10), opp = g.generateCandidateMoves(other(perspective), 10);
+    const lines = boardLines(g);
+    score += patternScoreForColor(lines, perspective);
+    score -= 1.03 * patternScoreForColor(lines, other(perspective));
+    const my = g.generateCandidateMoves(perspective, 12, true), opp = g.generateCandidateMoves(other(perspective), 12, true);
     for(const m of my) score += 0.04 * m.score;
     for(const m of opp) score -= 0.045 * m.score;
     return score;
@@ -723,8 +814,10 @@
       if(g.result) return g.result===side ? 1e12-ply : -1e12+ply;
       if(depth===0) return quiescence(alpha, beta, side, ply);
 
-      const tactical = chooseForcedSequenceMove(g, side, deadline);
-      if(tactical && tactical.move && depth <= 2) return tactical.score * (side===color ? 1 : -1);
+      if(depth <= 2){
+        const tactical = chooseForcedSequenceMove(g, side, deadline);
+        if(tactical && tactical.move) return tactical.score * (side===color ? 1 : -1);
+      }
 
       const key = ttKey(depth, side);
       const ent = tt.get(key);
@@ -735,7 +828,7 @@
         if(alpha >= beta) return ent.score;
       }
       const alpha0 = alpha;
-      let moves = g.generateCandidateMoves(side, depth >= 4 ? 16 : 12);
+      let moves = g.generateCandidateMoves(side, depth >= 4 ? 24 : 18, depth >= 3);
       if(!moves.length) return evaluateBoard(g, color) * (side===color ? 1 : -1);
       if(ply===0) candidateSummary = moves.slice(0,8).map(m => ({...m}));
       let best = null, value = -Infinity, first = true;
@@ -770,7 +863,7 @@
     const tactical = chooseForcedSequenceMove(g, color, deadline);
     if(tactical) return {move:tactical.move, score:tactical.score, nodes:0, mode:tactical.mode, candidates:tactical.move?[{...tactical.move, score:tactical.score, tag:tactical.mode}]:[]};
 
-    const rootMoves = g.generateCandidateMoves(color, 16);
+    const rootMoves = g.generateCandidateMoves(color, 28, true);
     if(!rootMoves.length){
       const fallback = g.findAnyLegalMove(color);
       return fallback
