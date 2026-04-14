@@ -1,6 +1,8 @@
 project:
   type: website
   output-dir: docs
+  resources:
+    - renju_engine.html
 
 website:
   title: "Tasuku Ono"
@@ -12,6 +14,8 @@ website:
         text: Publications
       - href: natural-languages.qmd
         text: Natural Languages
+      - href: renju_engine.html
+        text: 2D Ising Model
     # background: rgb(235, 130, 53)
   twitter-card:
     creator: "@PlusNineOnZero"
