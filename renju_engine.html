@@ -891,8 +891,15 @@
     if(searching || game.result || game.turn!==humanColor) return;
     const pos = boardPosFromEvent(ev); if(!pos) return;
     if(!game.isLegalMove(pos.x,pos.y,game.turn)){ drawBoard(); return; }
-    const c = game.turn; game.place(pos.x,pos.y,c); updateStatus(); await refreshWinningRate();
-    if(!game.result) await engineTurn(); else log(game.resultText);
+    const c = game.turn;
+    game.place(pos.x,pos.y,c);
+    updateStatus();
+    if(game.result){
+      await refreshWinningRate();
+      log(game.resultText);
+      return;
+    }
+    await engineTurn();
   }
   canvas.addEventListener('click', handleBoardInput);
   canvas.addEventListener('pointerdown', handleBoardInput);
