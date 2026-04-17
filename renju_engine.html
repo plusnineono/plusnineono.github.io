@@ -484,7 +484,6 @@
     if(game.result===BLACK){ renderWinningRate(100); return; }
     if(game.result===WHITE){ renderWinningRate(0); return; }
 
-    renderWinningRate(50);
     await new Promise(r => setTimeout(r, 0));
     if(ticket !== winRateTicket) return;
 
