@@ -462,6 +462,27 @@
     const blackScore = sideToMove===BLACK ? score : -score;
     return scoreToBlackWinRate(blackScore, result);
   }
+  function detectForcedWinRate(g, sideToMove, rootScore=0){
+    if(g.result===BLACK) return 100;
+    if(g.result===WHITE) return 0;
+
+    const favoredSide = rootScore >= 0 ? sideToMove : other(sideToMove);
+    const attackers = [favoredSide, other(favoredSide)];
+    for(const attacker of attackers){
+      const deadline = performance.now() + 180;
+      const forced = canForceWin(g.cloneLite(), attacker, sideToMove, 5, deadline, 6);
+      if(forced) return attacker===BLACK ? 100 : 0;
+    }
+    return null;
+  }
+  function searchResultToBlackWinRate(g, sideToMove, res){
+    if(g.result===BLACK) return 100;
+    if(g.result===WHITE) return 0;
+    if(typeof res?.score !== 'number') return null;
+    const forcedRate = detectForcedWinRate(g, sideToMove, res.score);
+    if(forcedRate !== null) return forcedRate;
+    return rootScoreToBlackWinRate(res.score, sideToMove, g.result);
+  }
   function renderWinningRate(blackRate){
     const whiteRate = 100 - blackRate;
     winRateBlack.style.width = `${blackRate}%`;
@@ -492,13 +513,13 @@
     const res = searchBestMove(probe, sideToMove, MAX_SEARCH_DEPTH);
     if(ticket !== winRateTicket) return;
     renderCandidateList(res.candidates || []);
-    if(typeof res.score === 'number'){
-      renderWinningRate(rootScoreToBlackWinRate(res.score, sideToMove, probe.result));
+    const blackRate = searchResultToBlackWinRate(probe, sideToMove, res);
+    if(blackRate !== null){
+      renderWinningRate(blackRate);
       return;
     }
 
-    const blackScore = evaluateBoard(probe, BLACK);
-    renderWinningRate(scoreToBlackWinRate(blackScore, probe.result));
+    renderWinningRate(scoreToBlackWinRate(evaluateBoard(probe, BLACK), probe.result));
   }
   function updateResultBanner(){
     resultBanner.className = 'resultBanner';
@@ -876,15 +897,24 @@
     if(!force && game.turn !== engineColor) return;
     searching = true; nodesVal.textContent = '0'; engineVal.textContent = 'Searching…'; candEl.textContent = 'Searching...'; updateStatus();
     await new Promise(r => setTimeout(r, 25));
-    const res = searchBestMove(game, game.turn, MAX_SEARCH_DEPTH);
+    const sideToMove = game.turn;
+    const positionBeforeMove = game.cloneLite();
+    const res = searchBestMove(game, sideToMove, MAX_SEARCH_DEPTH);
     nodesVal.textContent = String(res.nodes);
+    renderCandidateList(res.candidates || []);
     if(res.move){
       const here = game.turn;
       log(`${colorName(here)} engine plays ${coordName(res.move.x,res.move.y)}  [${res.mode}; score ${formatScore(res.score)}]`);
       game.place(res.move.x, res.move.y, here);
       if(game.result) log(game.resultText);
     } else log(`${colorName(game.turn)} engine found no move  [${res.mode}]`);
-    searching = false; engineVal.textContent = 'Idle'; updateStatus(); await refreshWinningRate();
+    searching = false; engineVal.textContent = 'Idle'; updateStatus();
+    if(game.result){
+      await refreshWinningRate();
+      return;
+    }
+    const blackRate = searchResultToBlackWinRate(positionBeforeMove, sideToMove, res);
+    if(blackRate !== null) renderWinningRate(blackRate);
   }
 
   async function handleBoardInput(ev){
