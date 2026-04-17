@@ -458,6 +458,10 @@
     const probability = 1 / (1 + Math.exp(-1.2 * normalized));
     return Math.max(1, Math.min(99, Math.round(probability * 100)));
   }
+  function rootScoreToBlackWinRate(score, sideToMove, result=0){
+    const blackScore = sideToMove===BLACK ? score : -score;
+    return scoreToBlackWinRate(blackScore, result);
+  }
   function renderWinningRate(blackRate){
     const whiteRate = 100 - blackRate;
     winRateBlack.style.width = `${blackRate}%`;
@@ -485,45 +489,17 @@
     if(ticket !== winRateTicket) return;
 
     const probe = game.cloneLite();
-    const res = searchBestMove(probe, probe.turn, MAX_SEARCH_DEPTH);
+    const sideToMove = probe.turn;
+    const res = searchBestMove(probe, sideToMove, MAX_SEARCH_DEPTH);
     if(ticket !== winRateTicket) return;
     renderCandidateList(res.candidates || []);
-
-    const movingColor = probe.turn;
-    if(res.move) probe.place(res.move.x, res.move.y, movingColor);
-    if(ticket !== winRateTicket) return;
-
-    if(probe.result){
-      const blackRate = probe.result===BLACK ? 100 : 0;
-      renderWinningRate(blackRate);
+    if(typeof res.score === 'number'){
+      renderWinningRate(rootScoreToBlackWinRate(res.score, sideToMove, probe.result));
       return;
     }
 
-    if(res.move){
-      const sideToMove = probe.turn;
-      const certaintyDeadline1 = performance.now() + 120;
-      const sideToMoveWins = canForceWin(probe.cloneLite(), sideToMove, sideToMove, 3, certaintyDeadline1, 5);
-      if(ticket !== winRateTicket) return;
-      if(sideToMoveWins){
-        const blackRate = sideToMove===BLACK ? 100 : 0;
-        renderWinningRate(blackRate);
-        return;
-      }
-
-      const otherSide = other(sideToMove);
-      const certaintyDeadline2 = performance.now() + 120;
-      const otherSideWins = canForceWin(probe.cloneLite(), otherSide, sideToMove, 3, certaintyDeadline2, 5);
-      if(ticket !== winRateTicket) return;
-      if(otherSideWins){
-        const blackRate = otherSide===BLACK ? 100 : 0;
-        renderWinningRate(blackRate);
-        return;
-      }
-    }
-
     const blackScore = evaluateBoard(probe, BLACK);
-    const blackRate = scoreToBlackWinRate(blackScore, probe.result);
-    renderWinningRate(blackRate);
+    renderWinningRate(scoreToBlackWinRate(blackScore, probe.result));
   }
   function updateResultBanner(){
     resultBanner.className = 'resultBanner';
