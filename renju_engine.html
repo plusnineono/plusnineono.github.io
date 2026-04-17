@@ -453,9 +453,10 @@
   function scoreToBlackWinRate(score, result=0){
     if(result===BLACK) return 100;
     if(result===WHITE) return 0;
-    if(Math.abs(score) >= 1e11) return score > 0 ? 99 : 1;
-    const normalized = Math.sign(score) * Math.log10(1 + Math.abs(score) / 1e10);
-    const probability = 1 / (1 + Math.exp(-1.2 * normalized));
+    if(Math.abs(score) >= 9e11) return score > 0 ? 99 : 1;
+    // Use a centipawn-style logistic curve so ordinary search scores do not
+    // visually collapse back to 50/50 after every move.
+    const probability = 1 / (1 + Math.exp(-(score / 1.8e8)));
     return Math.max(1, Math.min(99, Math.round(probability * 100)));
   }
   function rootScoreToBlackWinRate(score, sideToMove, result=0){
