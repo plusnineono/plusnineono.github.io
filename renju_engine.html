@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Renju Dojo 連珠道場 v5.0</title>
+<title>Renju Dojo 連珠道場 v5.1</title>
 <style>
   :root {
     --bg: #11151c;
@@ -55,7 +55,7 @@
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>Renju Dojo 連珠道場 v5.0</h1>
+    <h1>Renju Dojo 連珠道場 v5.1</h1>
     <div class="row">
       <button id="newGameBtn" class="primary">New game</button>
       <button id="undoBtn">Undo</button>
@@ -434,6 +434,7 @@
   let winRateTicket = 0;
   let liveEvalEnabled = false;
   let winRateFrozen = false;
+  let lastRenderedBlackRate = 50;
 
   function log(){ }
   function clearLog(){ }
@@ -494,6 +495,7 @@
   }
   function renderWinningRate(blackRate, force=false){
     if(winRateFrozen && !force) return;
+    lastRenderedBlackRate = blackRate;
     const whiteRate = 100 - blackRate;
     winRateBlack.style.width = `${blackRate}%`;
     winRateWhite.style.width = `${whiteRate}%`;
@@ -927,7 +929,10 @@
       return;
     }
     const blackRate = searchResultToBlackWinRate(positionBeforeMove, sideToMove, res);
-    if(blackRate !== null) renderWinningRate(blackRate, true);
+    if(blackRate !== null){
+      const preservePrevious = sideToMove===WHITE && blackRate===50 && !game.result && lastRenderedBlackRate!==50;
+      renderWinningRate(preservePrevious ? lastRenderedBlackRate : blackRate, true);
+    }
   }
 
   async function handleBoardInput(ev){
