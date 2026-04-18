@@ -433,6 +433,7 @@
   const MAX_SEARCH_DEPTH = 14;
   let winRateTicket = 0;
   let liveEvalEnabled = false;
+  let winRateFrozen = false;
 
   function log(){ }
   function clearLog(){ }
@@ -484,7 +485,15 @@
     if(forcedRate !== null) return forcedRate;
     return rootScoreToBlackWinRate(res.score, sideToMove, g.result);
   }
-  function renderWinningRate(blackRate){
+  function freezeWinningRate(){
+    winRateFrozen = true;
+    winRateTicket++;
+  }
+  function unfreezeWinningRate(){
+    winRateFrozen = false;
+  }
+  function renderWinningRate(blackRate, force=false){
+    if(winRateFrozen && !force) return;
     const whiteRate = 100 - blackRate;
     winRateBlack.style.width = `${blackRate}%`;
     winRateWhite.style.width = `${whiteRate}%`;
@@ -502,6 +511,7 @@
     }
   }
   async function refreshWinningRate(){
+    if(winRateFrozen) return;
     const ticket = ++winRateTicket;
     if(game.result===BLACK){ renderWinningRate(100); return; }
     if(game.result===WHITE){ renderWinningRate(0); return; }
@@ -896,6 +906,7 @@
   async function engineTurn(force=false){
     if(searching || game.result) return;
     if(!force && game.turn !== engineColor) return;
+    freezeWinningRate();
     searching = true; nodesVal.textContent = '0'; engineVal.textContent = 'Searching…'; candEl.textContent = 'Searching...'; updateStatus();
     await new Promise(r => setTimeout(r, 25));
     const sideToMove = game.turn;
@@ -910,12 +921,13 @@
       if(game.result) log(game.resultText);
     } else log(`${colorName(game.turn)} engine found no move  [${res.mode}]`);
     searching = false; engineVal.textContent = 'Idle'; updateStatus();
+    unfreezeWinningRate();
     if(game.result){
       await refreshWinningRate();
       return;
     }
     const blackRate = searchResultToBlackWinRate(positionBeforeMove, sideToMove, res);
-    if(blackRate !== null) renderWinningRate(blackRate);
+    if(blackRate !== null) renderWinningRate(blackRate, true);
   }
 
   async function handleBoardInput(ev){
@@ -924,8 +936,10 @@
     if(!game.isLegalMove(pos.x,pos.y,game.turn)){ drawBoard(); return; }
     const c = game.turn;
     game.place(pos.x,pos.y,c);
+    freezeWinningRate();
     updateStatus();
     if(game.result){
+      unfreezeWinningRate();
       await refreshWinningRate();
       log(game.resultText);
       return;
