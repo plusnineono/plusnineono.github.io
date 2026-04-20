@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Renju Dojo 連珠道場 v5.0</title>
+<title>Renju Dojo 連珠道場 v5.2</title>
 <style>
   :root {
     --bg: #11151c;
@@ -55,7 +55,7 @@
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>Renju Dojo 連珠道場 v5.0</h1>
+    <h1>Renju Dojo 連珠道場 v5.2</h1>
     <div class="row">
       <button id="newGameBtn" class="primary">New game</button>
       <button id="undoBtn">Undo</button>
@@ -433,6 +433,11 @@
   const MAX_SEARCH_DEPTH = 14;
   let winRateTicket = 0;
   let liveEvalEnabled = false;
+  let winRateFrozen = false;
+  let lastRenderedBlackRate = 50;
+  let forbiddenMarkerCacheKey = '';
+  let forbiddenMarkerCache = [];
+  let forbiddenMarkerSet = new Set();
 
   function log(){ }
   function clearLog(){ }
@@ -453,12 +458,47 @@
   function scoreToBlackWinRate(score, result=0){
     if(result===BLACK) return 100;
     if(result===WHITE) return 0;
-    if(Math.abs(score) >= 1e11) return score > 0 ? 99 : 1;
-    const normalized = Math.sign(score) * Math.log10(1 + Math.abs(score) / 1e10);
-    const probability = 1 / (1 + Math.exp(-1.2 * normalized));
+    if(Math.abs(score) >= 9e11) return score > 0 ? 99 : 1;
+    // Use a centipawn-style logistic curve so ordinary search scores do not
+    // visually collapse back to 50/50 after every move.
+    const probability = 1 / (1 + Math.exp(-(score / 1.8e8)));
     return Math.max(1, Math.min(99, Math.round(probability * 100)));
   }
-  function renderWinningRate(blackRate){
+  function rootScoreToBlackWinRate(score, sideToMove, result=0){
+    const blackScore = sideToMove===BLACK ? score : -score;
+    return scoreToBlackWinRate(blackScore, result);
+  }
+  function detectForcedWinRate(g, sideToMove, rootScore=0){
+    if(g.result===BLACK) return 100;
+    if(g.result===WHITE) return 0;
+
+    const favoredSide = rootScore >= 0 ? sideToMove : other(sideToMove);
+    const attackers = [favoredSide, other(favoredSide)];
+    for(const attacker of attackers){
+      const deadline = performance.now() + 180;
+      const forced = canForceWin(g.cloneLite(), attacker, sideToMove, 5, deadline, 6);
+      if(forced) return attacker===BLACK ? 100 : 0;
+    }
+    return null;
+  }
+  function searchResultToBlackWinRate(g, sideToMove, res){
+    if(g.result===BLACK) return 100;
+    if(g.result===WHITE) return 0;
+    if(typeof res?.score !== 'number') return null;
+    const forcedRate = detectForcedWinRate(g, sideToMove, res.score);
+    if(forcedRate !== null) return forcedRate;
+    return rootScoreToBlackWinRate(res.score, sideToMove, g.result);
+  }
+  function freezeWinningRate(){
+    winRateFrozen = true;
+    winRateTicket++;
+  }
+  function unfreezeWinningRate(){
+    winRateFrozen = false;
+  }
+  function renderWinningRate(blackRate, force=false){
+    if(winRateFrozen && !force) return;
+    lastRenderedBlackRate = blackRate;
     const whiteRate = 100 - blackRate;
     winRateBlack.style.width = `${blackRate}%`;
     winRateWhite.style.width = `${whiteRate}%`;
@@ -476,54 +516,26 @@
     }
   }
   async function refreshWinningRate(){
+    if(winRateFrozen) return;
     const ticket = ++winRateTicket;
     if(game.result===BLACK){ renderWinningRate(100); return; }
     if(game.result===WHITE){ renderWinningRate(0); return; }
 
-    renderWinningRate(50);
     await new Promise(r => setTimeout(r, 0));
     if(ticket !== winRateTicket) return;
 
     const probe = game.cloneLite();
-    const res = searchBestMove(probe, probe.turn, MAX_SEARCH_DEPTH);
+    const sideToMove = probe.turn;
+    const res = searchBestMove(probe, sideToMove, MAX_SEARCH_DEPTH);
     if(ticket !== winRateTicket) return;
     renderCandidateList(res.candidates || []);
-
-    const movingColor = probe.turn;
-    if(res.move) probe.place(res.move.x, res.move.y, movingColor);
-    if(ticket !== winRateTicket) return;
-
-    if(probe.result){
-      const blackRate = probe.result===BLACK ? 100 : 0;
+    const blackRate = searchResultToBlackWinRate(probe, sideToMove, res);
+    if(blackRate !== null){
       renderWinningRate(blackRate);
       return;
     }
 
-    if(res.move){
-      const sideToMove = probe.turn;
-      const certaintyDeadline1 = performance.now() + 120;
-      const sideToMoveWins = canForceWin(probe.cloneLite(), sideToMove, sideToMove, 3, certaintyDeadline1, 5);
-      if(ticket !== winRateTicket) return;
-      if(sideToMoveWins){
-        const blackRate = sideToMove===BLACK ? 100 : 0;
-        renderWinningRate(blackRate);
-        return;
-      }
-
-      const otherSide = other(sideToMove);
-      const certaintyDeadline2 = performance.now() + 120;
-      const otherSideWins = canForceWin(probe.cloneLite(), otherSide, sideToMove, 3, certaintyDeadline2, 5);
-      if(ticket !== winRateTicket) return;
-      if(otherSideWins){
-        const blackRate = otherSide===BLACK ? 100 : 0;
-        renderWinningRate(blackRate);
-        return;
-      }
-    }
-
-    const blackScore = evaluateBoard(probe, BLACK);
-    const blackRate = scoreToBlackWinRate(blackScore, probe.result);
-    renderWinningRate(blackRate);
+    renderWinningRate(scoreToBlackWinRate(evaluateBoard(probe, BLACK), probe.result));
   }
   function updateResultBanner(){
     resultBanner.className = 'resultBanner';
@@ -570,10 +582,22 @@
       }
     }
   }
+  function invalidateForbiddenMarkerCache(){
+    forbiddenMarkerCacheKey = '';
+    forbiddenMarkerCache = [];
+    forbiddenMarkerSet = new Set();
+  }
   function getForbiddenMarkers(){
     // Full-board forbidden-move evaluation is extremely expensive and can
     // freeze the page, which makes the controls feel unclickable.
-    if(game.history.length < 4) return [];
+    const cacheKey = `${game.zhash}_${game.turn}_${humanColor}_${game.result}`;
+    if(cacheKey === forbiddenMarkerCacheKey) return forbiddenMarkerCache;
+    if(game.history.length < 4 || game.result || game.turn!==humanColor || game.turn!==BLACK){
+      forbiddenMarkerCacheKey = cacheKey;
+      forbiddenMarkerCache = [];
+      forbiddenMarkerSet = new Set();
+      return forbiddenMarkerCache;
+    }
 
     const markers = [];
     const seen = new Set();
@@ -587,7 +611,10 @@
         }
       }
     }
-    return markers;
+    forbiddenMarkerCacheKey = cacheKey;
+    forbiddenMarkerCache = markers;
+    forbiddenMarkerSet = new Set(markers.map(({x, y}) => idx(x, y)));
+    return forbiddenMarkerCache;
   }
   function updateStatus(){ turnVal.textContent = colorName(game.turn); resultVal.textContent = game.resultText; engineVal.textContent = searching ? 'Searching…' : 'Idle'; updateResultBanner(); drawBoard(); }
   function boardPosFromEvent(ev){
@@ -899,43 +926,71 @@
   async function engineTurn(force=false){
     if(searching || game.result) return;
     if(!force && game.turn !== engineColor) return;
+    freezeWinningRate();
     searching = true; nodesVal.textContent = '0'; engineVal.textContent = 'Searching…'; candEl.textContent = 'Searching...'; updateStatus();
     await new Promise(r => setTimeout(r, 25));
-    const res = searchBestMove(game, game.turn, MAX_SEARCH_DEPTH);
+    const sideToMove = game.turn;
+    const positionBeforeMove = game.cloneLite();
+    const res = searchBestMove(game, sideToMove, MAX_SEARCH_DEPTH);
     nodesVal.textContent = String(res.nodes);
+    renderCandidateList(res.candidates || []);
     if(res.move){
       const here = game.turn;
       log(`${colorName(here)} engine plays ${coordName(res.move.x,res.move.y)}  [${res.mode}; score ${formatScore(res.score)}]`);
       game.place(res.move.x, res.move.y, here);
       if(game.result) log(game.resultText);
     } else log(`${colorName(game.turn)} engine found no move  [${res.mode}]`);
-    searching = false; engineVal.textContent = 'Idle'; updateStatus(); await refreshWinningRate();
+    searching = false; engineVal.textContent = 'Idle'; updateStatus();
+    unfreezeWinningRate();
+    if(game.result){
+      await refreshWinningRate();
+      return;
+    }
+    const blackRate = searchResultToBlackWinRate(positionBeforeMove, sideToMove, res);
+    if(blackRate !== null){
+      const preservePrevious = sideToMove===WHITE && blackRate===50 && !game.result && lastRenderedBlackRate!==50;
+      renderWinningRate(preservePrevious ? lastRenderedBlackRate : blackRate, true);
+    }
   }
 
   async function handleBoardInput(ev){
     if(searching || game.result || game.turn!==humanColor) return;
     const pos = boardPosFromEvent(ev); if(!pos) return;
-    if(!game.isLegalMove(pos.x,pos.y,game.turn)){ drawBoard(); return; }
-    const c = game.turn; game.place(pos.x,pos.y,c); updateStatus(); await refreshWinningRate();
-    if(!game.result) await engineTurn(); else log(game.resultText);
+    if(game.turn===BLACK && humanColor===BLACK){
+      getForbiddenMarkers();
+      if(forbiddenMarkerSet.has(idx(pos.x, pos.y))){ drawBoard(); return; }
+    } else if(!game.isLegalMove(pos.x,pos.y,game.turn)){ drawBoard(); return; }
+    const c = game.turn;
+    game.place(pos.x,pos.y,c);
+    invalidateForbiddenMarkerCache();
+    freezeWinningRate();
+    updateStatus();
+    if(game.result){
+      unfreezeWinningRate();
+      await refreshWinningRate();
+      log(game.resultText);
+      return;
+    }
+    await engineTurn();
   }
   canvas.addEventListener('click', handleBoardInput);
   canvas.addEventListener('pointerdown', handleBoardInput);
 
   newGameBtn.onclick = async () => {
     game.reset(); humanColor = Number(humanColorSel.value); engineColor = other(humanColor); game.humanColor = humanColor; game.engineColor = engineColor;
+    invalidateForbiddenMarkerCache();
     clearLog(); candEl.textContent = liveEvalEnabled ? 'Calculating...' : 'Live evaluation is off.'; updateStatus(); await refreshWinningRate();
     if(game.turn===engineColor) await engineTurn(true);
   };
   undoBtn.onclick = async () => {
-    if(searching) return; if(game.history.length) game.undo(); if(game.history.length && game.turn!==humanColor) game.undo(); updateStatus(); await refreshWinningRate();
+    if(searching) return; if(game.history.length) game.undo(); if(game.history.length && game.turn!==humanColor) game.undo(); invalidateForbiddenMarkerCache(); updateStatus(); await refreshWinningRate();
   };
   hintBtn.onclick = async () => {
     if(searching) return;
     setLiveEvalEnabled(!liveEvalEnabled);
     if(liveEvalEnabled) await refreshWinningRate();
   };
-  switchBtn.onclick = async () => { if(searching) return; humanColor = other(humanColor); engineColor = other(engineColor); humanColorSel.value = String(humanColor); updateStatus(); await refreshWinningRate(); if(!game.result && game.turn===engineColor) await engineTurn(true); };
+  switchBtn.onclick = async () => { if(searching) return; humanColor = other(humanColor); engineColor = other(engineColor); humanColorSel.value = String(humanColor); invalidateForbiddenMarkerCache(); updateStatus(); await refreshWinningRate(); if(!game.result && game.turn===engineColor) await engineTurn(true); };
   engineMoveBtn.onclick = async () => { await engineTurn(true); };
   humanColorSel.onchange = () => { humanColor = Number(humanColorSel.value); engineColor = other(humanColor); };
 
