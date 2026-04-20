@@ -5,7 +5,7 @@ sidebar: false
 
 I am interested in exploring the intersection between theory and experiments on quantum many-body systems in AMO and condensed-matter physics.
 
-I am a graduate student at MIT; before that, I studied physics and mathematics at Harvard University.
+I am a graduate student at MIT. I studied physics and mathematics at Harvard University.
 
 My recent works include
 

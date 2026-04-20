@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Renju Dojo 連珠道場 v5.1</title>
+<title>Renju Dojo 連珠道場 v5.2</title>
 <style>
   :root {
     --bg: #11151c;
@@ -55,7 +55,7 @@
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>Renju Dojo 連珠道場 v5.1</h1>
+    <h1>Renju Dojo 連珠道場 v5.2</h1>
     <div class="row">
       <button id="newGameBtn" class="primary">New game</button>
       <button id="undoBtn">Undo</button>
@@ -435,6 +435,9 @@
   let liveEvalEnabled = false;
   let winRateFrozen = false;
   let lastRenderedBlackRate = 50;
+  let forbiddenMarkerCacheKey = '';
+  let forbiddenMarkerCache = [];
+  let forbiddenMarkerSet = new Set();
 
   function log(){ }
   function clearLog(){ }
@@ -579,10 +582,22 @@
       }
     }
   }
+  function invalidateForbiddenMarkerCache(){
+    forbiddenMarkerCacheKey = '';
+    forbiddenMarkerCache = [];
+    forbiddenMarkerSet = new Set();
+  }
   function getForbiddenMarkers(){
     // Full-board forbidden-move evaluation is extremely expensive and can
     // freeze the page, which makes the controls feel unclickable.
-    if(game.history.length < 4) return [];
+    const cacheKey = `${game.zhash}_${game.turn}_${humanColor}_${game.result}`;
+    if(cacheKey === forbiddenMarkerCacheKey) return forbiddenMarkerCache;
+    if(game.history.length < 4 || game.result || game.turn!==humanColor || game.turn!==BLACK){
+      forbiddenMarkerCacheKey = cacheKey;
+      forbiddenMarkerCache = [];
+      forbiddenMarkerSet = new Set();
+      return forbiddenMarkerCache;
+    }
 
     const markers = [];
     const seen = new Set();
@@ -596,7 +611,10 @@
         }
       }
     }
-    return markers;
+    forbiddenMarkerCacheKey = cacheKey;
+    forbiddenMarkerCache = markers;
+    forbiddenMarkerSet = new Set(markers.map(({x, y}) => idx(x, y)));
+    return forbiddenMarkerCache;
   }
   function updateStatus(){ turnVal.textContent = colorName(game.turn); resultVal.textContent = game.resultText; engineVal.textContent = searching ? 'Searching…' : 'Idle'; updateResultBanner(); drawBoard(); }
   function boardPosFromEvent(ev){
@@ -938,9 +956,13 @@
   async function handleBoardInput(ev){
     if(searching || game.result || game.turn!==humanColor) return;
     const pos = boardPosFromEvent(ev); if(!pos) return;
-    if(!game.isLegalMove(pos.x,pos.y,game.turn)){ drawBoard(); return; }
+    if(game.turn===BLACK && humanColor===BLACK){
+      getForbiddenMarkers();
+      if(forbiddenMarkerSet.has(idx(pos.x, pos.y))){ drawBoard(); return; }
+    } else if(!game.isLegalMove(pos.x,pos.y,game.turn)){ drawBoard(); return; }
     const c = game.turn;
     game.place(pos.x,pos.y,c);
+    invalidateForbiddenMarkerCache();
     freezeWinningRate();
     updateStatus();
     if(game.result){
@@ -956,18 +978,19 @@
 
   newGameBtn.onclick = async () => {
     game.reset(); humanColor = Number(humanColorSel.value); engineColor = other(humanColor); game.humanColor = humanColor; game.engineColor = engineColor;
+    invalidateForbiddenMarkerCache();
     clearLog(); candEl.textContent = liveEvalEnabled ? 'Calculating...' : 'Live evaluation is off.'; updateStatus(); await refreshWinningRate();
     if(game.turn===engineColor) await engineTurn(true);
   };
   undoBtn.onclick = async () => {
-    if(searching) return; if(game.history.length) game.undo(); if(game.history.length && game.turn!==humanColor) game.undo(); updateStatus(); await refreshWinningRate();
+    if(searching) return; if(game.history.length) game.undo(); if(game.history.length && game.turn!==humanColor) game.undo(); invalidateForbiddenMarkerCache(); updateStatus(); await refreshWinningRate();
   };
   hintBtn.onclick = async () => {
     if(searching) return;
     setLiveEvalEnabled(!liveEvalEnabled);
     if(liveEvalEnabled) await refreshWinningRate();
   };
-  switchBtn.onclick = async () => { if(searching) return; humanColor = other(humanColor); engineColor = other(engineColor); humanColorSel.value = String(humanColor); updateStatus(); await refreshWinningRate(); if(!game.result && game.turn===engineColor) await engineTurn(true); };
+  switchBtn.onclick = async () => { if(searching) return; humanColor = other(humanColor); engineColor = other(engineColor); humanColorSel.value = String(humanColor); invalidateForbiddenMarkerCache(); updateStatus(); await refreshWinningRate(); if(!game.result && game.turn===engineColor) await engineTurn(true); };
   engineMoveBtn.onclick = async () => { await engineTurn(true); };
   humanColorSel.onchange = () => { humanColor = Number(humanColorSel.value); engineColor = other(humanColor); };
 
