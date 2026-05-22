@@ -13,7 +13,7 @@ website:
       - href: publications.qmd
         text: Publications
       - href: natural-languages.qmd
-        text: Natural Languages
+        text: Notes
       - href: renju_engine.html
         text: 2D Ising Model
     # background: rgb(235, 130, 53)

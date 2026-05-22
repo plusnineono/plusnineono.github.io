@@ -77,7 +77,7 @@ body {
 
 /* Optical correction: "Home" has no descenders, so it reads slightly high */
 .navbar-nav .nav-link[href="./index.html"] .menu-text {
-  transform: translateY(0.09em);
+  transform: translateY(0.16em);
 }
 
 .navbar-nav .nav-link::after {

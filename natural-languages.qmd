@@ -1,5 +1,5 @@
 ---
-title: "Natural Languages"
+title: "Notes"
 format:
   html:
     toc: true
@@ -7,13 +7,10 @@ format:
 ---
 <div style="height: 20px;"></div>
 
-## English Essays
-In progress!
-<!--
-### Impressionists in Boston
-<div style="height: 20px;"></div>
-[In Progress!](impressionism.qmd)
--->
+## Physics
+
+[Non-Exponential Tails of Free Atomic Spontaneous Emission](non-exp-spont-emission.qmd)
+
 <div style="height: 20px;"></div>
 
 ## Japanese Essays
@@ -44,6 +41,6 @@ In progress!
 ### 坂の上のワニ
 <div style="height: 20px;"></div>
 
-[プロローグ](wani_prologue.qmd)　(Sep 21st, 2025)
+[プロローグ](wani_prologue.qmd)
 
-[カラスが鳴く （あるいは、物理の話を始めるとき、何の話から始めるべきだろうか）](wani_crowphysics.qmd) (Sep 21st, 2025)
+[カラスが鳴く （あるいは、物理の話を始めるとき、何の話から始めるべきだろうか）](wani_crowphysics.qmd)
