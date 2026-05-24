@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Renju Dojo 連珠道場 v5.2</title>
+<title>Renju Dojo 連珠道場 v5.3</title>
 <style>
   :root {
     --bg: #11151c;
@@ -46,6 +46,9 @@
   .cand { margin-top: 10px; font-size: 13px; line-height: 1.55; }
   .hidden { display: none; }
   .footer { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .info-tip { position: relative; display: inline-flex; align-items: center; cursor: help; color: var(--muted); font-size: 13px; font-weight: 400; }
+  .info-tip-text { visibility: hidden; opacity: 0; background: #1b2430; color: var(--text); font-size: 12px; border-radius: 10px; padding: 9px 12px; width: 230px; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 8px); border: 1px solid #3d4a5d; line-height: 1.5; transition: opacity 0.15s; z-index: 20; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  .info-tip:hover .info-tip-text { visibility: visible; opacity: 1; }
   @media (max-width: 1080px) {
     :root { --board-size: min(82vw, 680px); }
     .wrap { grid-template-columns: 1fr; max-width: 760px; }
@@ -55,11 +58,10 @@
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>Renju Dojo 連珠道場 v5.2</h1>
+    <h1>Renju Dojo 連珠道場 v5.3</h1>
     <div class="row">
       <button id="newGameBtn" class="primary">New game</button>
       <button id="undoBtn">Undo</button>
-      <button id="hintBtn">Live eval: Off</button>
       <button id="switchBtn">Switch sides</button>
       <button id="engineMoveBtn">Engine move now</button>
       <select id="humanColorSel">
@@ -82,8 +84,11 @@
       <div class="card"><div class="label">Engine</div><div id="engineVal" class="value">Idle</div></div>
       <div class="card"><div class="label">Nodes</div><div id="nodesVal" class="value">0</div></div>
     </div>
-    <div style="margin-top:14px; font-weight:700;">Winning Rate</div>
-    <div class="winRateBox">
+    <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between;">
+      <span style="font-weight:700; display:flex; align-items:center; gap:6px;">Winning Rate <span class="info-tip">ℹ<span class="info-tip-text">Calculated by the engine using the thinking time set above. A longer thinking time gives a deeper search and a more accurate win rate estimate.</span></span></span>
+      <button id="winRateToggleBtn" style="padding:5px 10px;font-size:12px;">On</button>
+    </div>
+    <div id="winRatePanel" class="winRateBox">
       <div>
         <div class="winRateBar" aria-label="Winning rate bar">
           <div id="winRateBlack" class="winRateFillBlack" style="width:50%"></div>
@@ -96,10 +101,11 @@
         <div id="winRateVal" class="winRateValue">Even</div>
       </div>
     </div>
-    <div id="liveEvalPanel" class="hidden">
-      <div style="margin-top:12px; font-weight:700;">Top candidates</div>
-      <div id="cand" class="cand">No search yet.</div>
+    <div style="margin-top:12px; display:flex; align-items:center; justify-content:space-between;">
+      <span style="font-weight:700;">Top candidates</span>
+      <button id="candidatesToggleBtn" style="padding:5px 10px;font-size:12px;">Off</button>
     </div>
+    <div id="cand" class="cand hidden">No search yet.</div>
     <div id="errBox" class="cand" style="margin-top:10px;color:#ffb4b4;"></div>
   </div>
 </div>
@@ -124,10 +130,11 @@
   const winRateVal = document.getElementById('winRateVal');
   const candEl = document.getElementById('cand');
   const errBox = document.getElementById('errBox');
+  const winRatePanel = document.getElementById('winRatePanel');
+  const winRateToggleBtn = document.getElementById('winRateToggleBtn');
+  const candidatesToggleBtn = document.getElementById('candidatesToggleBtn');
   const newGameBtn = document.getElementById('newGameBtn');
   const undoBtn = document.getElementById('undoBtn');
-  const hintBtn = document.getElementById('hintBtn');
-  const liveEvalPanel = document.getElementById('liveEvalPanel');
   const switchBtn = document.getElementById('switchBtn');
   const engineMoveBtn = document.getElementById('engineMoveBtn');
   const humanColorSel = document.getElementById('humanColorSel');
@@ -432,9 +439,8 @@
   let humanColor = BLACK, engineColor = WHITE, searching = false;
   const MAX_SEARCH_DEPTH = 14;
   let winRateTicket = 0;
-  let liveEvalEnabled = false;
-  let winRateFrozen = false;
-  let lastRenderedBlackRate = 50;
+  let winRateEnabled = true;
+  let candidatesEnabled = false;
   let forbiddenMarkerCacheKey = '';
   let forbiddenMarkerCache = [];
   let forbiddenMarkerSet = new Set();
@@ -445,69 +451,46 @@
   function getSearchBudgetMs(){
     return Number(timeSel.value);
   }
-  function setLiveEvalEnabled(enabled){
-    liveEvalEnabled = enabled;
-    hintBtn.textContent = `Live eval: ${enabled ? 'On' : 'Off'}`;
-    liveEvalPanel.classList.toggle('hidden', !enabled);
-    if(!enabled) candEl.textContent = 'Live evaluation is off.';
-  }
   function renderCandidateList(candidates){
-    if(!liveEvalEnabled) return;
+    if(!candidatesEnabled) return;
     candEl.innerHTML = candidates.length ? candidates.map((m,i)=>`${i+1}. ${coordName(m.x,m.y)} &nbsp; ${m.tag || ''} &nbsp; score ${formatScore(m.score)}`).join('<br>') : 'No candidates';
   }
   function scoreToBlackWinRate(score, result=0){
     if(result===BLACK) return 100;
     if(result===WHITE) return 0;
     if(Math.abs(score) >= 9e11) return score > 0 ? 99 : 1;
-    // Use a centipawn-style logistic curve so ordinary search scores do not
-    // visually collapse back to 50/50 after every move.
-    const probability = 1 / (1 + Math.exp(-(score / 1.8e8)));
+    // Log-scale so the full evaluateBoard range maps smoothly to 1–99%
+    const normalized = Math.sign(score) * Math.log10(1 + Math.abs(score) / 1e7);
+    const probability = 1 / (1 + Math.exp(-normalized));
     return Math.max(1, Math.min(99, Math.round(probability * 100)));
   }
   function rootScoreToBlackWinRate(score, sideToMove, result=0){
     const blackScore = sideToMove===BLACK ? score : -score;
     return scoreToBlackWinRate(blackScore, result);
   }
-  function detectForcedWinRate(g, sideToMove, rootScore=0){
-    if(g.result===BLACK) return 100;
-    if(g.result===WHITE) return 0;
-
-    const favoredSide = rootScore >= 0 ? sideToMove : other(sideToMove);
-    const attackers = [favoredSide, other(favoredSide)];
-    for(const attacker of attackers){
-      const deadline = performance.now() + 180;
-      const forced = canForceWin(g.cloneLite(), attacker, sideToMove, 5, deadline, 6);
-      if(forced) return attacker===BLACK ? 100 : 0;
-    }
-    return null;
+  // Scores come from three sources with different ranges:
+  //   real search:    |score| < 4e10  → use directly
+  //   opening book:  |score| ≈ 5e10   → artificial priority, fall back to board eval
+  //   forced win/def:|score| ≥ 7e11   → show near-certain (99% / 1%)
+  function blackRateFromResult(res, sideToMove, boardForFallback, gameResult){
+    if(gameResult===BLACK) return 100;
+    if(gameResult===WHITE) return 0;
+    if(typeof res?.score !== 'number') return 50;
+    const abs = Math.abs(res.score);
+    if(abs >= 4e10 && abs < 7e11)
+      return scoreToBlackWinRate(evaluateBoard(boardForFallback, BLACK), gameResult);
+    return rootScoreToBlackWinRate(res.score, sideToMove, gameResult);
   }
-  function searchResultToBlackWinRate(g, sideToMove, res){
-    if(g.result===BLACK) return 100;
-    if(g.result===WHITE) return 0;
-    if(typeof res?.score !== 'number') return null;
-    const forcedRate = detectForcedWinRate(g, sideToMove, res.score);
-    if(forcedRate !== null) return forcedRate;
-    return rootScoreToBlackWinRate(res.score, sideToMove, g.result);
-  }
-  function freezeWinningRate(){
-    winRateFrozen = true;
-    winRateTicket++;
-  }
-  function unfreezeWinningRate(){
-    winRateFrozen = false;
-  }
-  function renderWinningRate(blackRate, force=false){
-    if(winRateFrozen && !force) return;
-    lastRenderedBlackRate = blackRate;
+  function renderWinningRate(blackRate){
     const whiteRate = 100 - blackRate;
     winRateBlack.style.width = `${blackRate}%`;
     winRateWhite.style.width = `${whiteRate}%`;
     winRateBlackLabel.textContent = `Black ${blackRate}%`;
     winRateWhiteLabel.textContent = `White ${whiteRate}%`;
-    if(blackRate > 50){
+    if(blackRate > 55){
       winRateVal.textContent = 'Black Ahead';
       winRateVal.style.color = 'var(--good)';
-    } else if(blackRate < 50){
+    } else if(blackRate < 45){
       winRateVal.textContent = 'White Ahead';
       winRateVal.style.color = '#ffb4b4';
     } else {
@@ -516,26 +499,18 @@
     }
   }
   async function refreshWinningRate(){
-    if(winRateFrozen) return;
+    if(!winRateEnabled && !candidatesEnabled) return;
     const ticket = ++winRateTicket;
     if(game.result===BLACK){ renderWinningRate(100); return; }
     if(game.result===WHITE){ renderWinningRate(0); return; }
-
     await new Promise(r => setTimeout(r, 0));
     if(ticket !== winRateTicket) return;
-
     const probe = game.cloneLite();
     const sideToMove = probe.turn;
     const res = searchBestMove(probe, sideToMove, MAX_SEARCH_DEPTH);
     if(ticket !== winRateTicket) return;
     renderCandidateList(res.candidates || []);
-    const blackRate = searchResultToBlackWinRate(probe, sideToMove, res);
-    if(blackRate !== null){
-      renderWinningRate(blackRate);
-      return;
-    }
-
-    renderWinningRate(scoreToBlackWinRate(evaluateBoard(probe, BLACK), probe.result));
+    if(winRateEnabled) renderWinningRate(blackRateFromResult(res, sideToMove, probe, probe.result));
   }
   function updateResultBanner(){
     resultBanner.className = 'resultBanner';
@@ -778,6 +753,7 @@
   function evaluateBoard(g, perspective){
     if(g.result===perspective) return 1e12;
     if(g.result===other(perspective)) return -1e12;
+    if(!g.history.length) return 0;
     const w = {five: 1e10, openFour: 2.5e7, four: 6e6, openThree: 9e5, brokenThree: 1.8e5, two: 1.8e4};
     let score = 0;
     for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++){
@@ -814,8 +790,10 @@
     let nodes = 0;
     let candidateSummary = [];
     const deadline = performance.now() + getSearchBudgetMs();
+    const killers = Array.from({length: maxDepth+4}, () => [null, null]);
+    const history = [null, new Map(), new Map()]; // [BLACK=1, WHITE=2]
 
-    function ttKey(depth, side){ return `${g.zhash}_${depth}_${side}`; }
+    function ttKey(side){ return `${g.zhash}_${side}`; }
 
     function quiescence(alpha, beta, side, ply){
       nodes++;
@@ -835,6 +813,9 @@
       return alpha;
     }
 
+    const TACTICAL_TAGS = new Set(['win','block-win','double-four','four','double-three','three','block-four','block-three']);
+    function isQuiet(m){ return !TACTICAL_TAGS.has(m.tag); }
+
     function negamax(depth, alpha, beta, side, ply=0){
       nodes++;
       if(performance.now() >= deadline) return evaluateBoard(g, color) * (side===color ? 1 : -1);
@@ -846,8 +827,9 @@
         if(tactical && tactical.move) return tactical.score * (side===color ? 1 : -1);
       }
 
-      const key = ttKey(depth, side);
+      const key = ttKey(side);
       const ent = tt.get(key);
+      let ttMove = ent ? ent.move : null;
       if(ent && ent.depth >= depth){
         if(ent.flag==='EXACT') return ent.score;
         if(ent.flag==='LOWER') alpha = Math.max(alpha, ent.score);
@@ -858,6 +840,23 @@
       let moves = g.generateCandidateMoves(side, depth >= 4 ? 24 : 18, depth >= 3);
       if(!moves.length) return evaluateBoard(g, color) * (side===color ? 1 : -1);
       if(ply===0) candidateSummary = moves.slice(0,8).map(m => ({...m}));
+
+      // Move ordering: TT move → killers → history bonus
+      if(ttMove){
+        const ti = moves.findIndex(m => m.x===ttMove.x && m.y===ttMove.y);
+        if(ti > 0){ moves.unshift(moves.splice(ti, 1)[0]); }
+      }
+      const kl = killers[ply] || [null, null];
+      for(let ki = 1; ki >= 0; ki--){
+        const k = kl[ki]; if(!k) continue;
+        const ki2 = moves.findIndex((m,i) => i>0 && m.x===k.x && m.y===k.y && isQuiet(m));
+        if(ki2 > 1){ moves.splice(1, 0, moves.splice(ki2, 1)[0]); }
+      }
+      const hist = history[side];
+      for(const m of moves){
+        if(isQuiet(m)){ const h = hist.get(idx(m.x,m.y)); if(h) m.score += h * 0.0005; }
+      }
+
       let best = null, value = -Infinity, first = true;
       for(const m of moves){
         if(performance.now() >= deadline) break;
@@ -871,8 +870,15 @@
         g.undo();
         m.searchScore = score;
         if(score > value){ value = score; best = m; }
-        alpha = Math.max(alpha, score);
-        if(alpha >= beta) break;
+        if(score > alpha) alpha = score;
+        if(alpha >= beta){
+          if(isQuiet(m)){
+            const k = killers[ply];
+            if(!k[0] || k[0].x!==m.x || k[0].y!==m.y){ k[1]=k[0]; k[0]={x:m.x,y:m.y}; }
+            hist.set(idx(m.x,m.y), (hist.get(idx(m.x,m.y))||0) + depth*depth);
+          }
+          break;
+        }
       }
       let flag = 'EXACT';
       if(value <= alpha0) flag='UPPER';
@@ -926,31 +932,22 @@
   async function engineTurn(force=false){
     if(searching || game.result) return;
     if(!force && game.turn !== engineColor) return;
-    freezeWinningRate();
-    searching = true; nodesVal.textContent = '0'; engineVal.textContent = 'Searching…'; candEl.textContent = 'Searching...'; updateStatus();
+    searching = true; nodesVal.textContent = '0'; engineVal.textContent = 'Searching…'; updateStatus();
     await new Promise(r => setTimeout(r, 25));
     const sideToMove = game.turn;
-    const positionBeforeMove = game.cloneLite();
     const res = searchBestMove(game, sideToMove, MAX_SEARCH_DEPTH);
     nodesVal.textContent = String(res.nodes);
-    renderCandidateList(res.candidates || []);
     if(res.move){
-      const here = game.turn;
-      log(`${colorName(here)} engine plays ${coordName(res.move.x,res.move.y)}  [${res.mode}; score ${formatScore(res.score)}]`);
-      game.place(res.move.x, res.move.y, here);
-      if(game.result) log(game.resultText);
-    } else log(`${colorName(game.turn)} engine found no move  [${res.mode}]`);
+      game.place(res.move.x, res.move.y, sideToMove);
+    }
     searching = false; engineVal.textContent = 'Idle'; updateStatus();
-    unfreezeWinningRate();
     if(game.result){
       await refreshWinningRate();
       return;
     }
-    const blackRate = searchResultToBlackWinRate(positionBeforeMove, sideToMove, res);
-    if(blackRate !== null){
-      const preservePrevious = sideToMove===WHITE && blackRate===50 && !game.result && lastRenderedBlackRate!==50;
-      renderWinningRate(preservePrevious ? lastRenderedBlackRate : blackRate, true);
-    }
+    if(winRateEnabled) renderWinningRate(blackRateFromResult(res, sideToMove, game, game.result));
+    // Candidates need a fresh search on the resulting position (human's turn now)
+    if(candidatesEnabled) await refreshWinningRate();
   }
 
   async function handleBoardInput(ev){
@@ -963,12 +960,9 @@
     const c = game.turn;
     game.place(pos.x,pos.y,c);
     invalidateForbiddenMarkerCache();
-    freezeWinningRate();
     updateStatus();
     if(game.result){
-      unfreezeWinningRate();
       await refreshWinningRate();
-      log(game.resultText);
       return;
     }
     await engineTurn();
@@ -979,16 +973,23 @@
   newGameBtn.onclick = async () => {
     game.reset(); humanColor = Number(humanColorSel.value); engineColor = other(humanColor); game.humanColor = humanColor; game.engineColor = engineColor;
     invalidateForbiddenMarkerCache();
-    clearLog(); candEl.textContent = liveEvalEnabled ? 'Calculating...' : 'Live evaluation is off.'; updateStatus(); await refreshWinningRate();
+    clearLog(); updateStatus(); await refreshWinningRate();
     if(game.turn===engineColor) await engineTurn(true);
   };
   undoBtn.onclick = async () => {
     if(searching) return; if(game.history.length) game.undo(); if(game.history.length && game.turn!==humanColor) game.undo(); invalidateForbiddenMarkerCache(); updateStatus(); await refreshWinningRate();
   };
-  hintBtn.onclick = async () => {
-    if(searching) return;
-    setLiveEvalEnabled(!liveEvalEnabled);
-    if(liveEvalEnabled) await refreshWinningRate();
+  winRateToggleBtn.onclick = async () => {
+    winRateEnabled = !winRateEnabled;
+    winRateToggleBtn.textContent = winRateEnabled ? 'On' : 'Off';
+    winRatePanel.classList.toggle('hidden', !winRateEnabled);
+    if(winRateEnabled && !searching) await refreshWinningRate();
+  };
+  candidatesToggleBtn.onclick = async () => {
+    candidatesEnabled = !candidatesEnabled;
+    candidatesToggleBtn.textContent = candidatesEnabled ? 'On' : 'Off';
+    candEl.classList.toggle('hidden', !candidatesEnabled);
+    if(candidatesEnabled && !searching) await refreshWinningRate();
   };
   switchBtn.onclick = async () => { if(searching) return; humanColor = other(humanColor); engineColor = other(engineColor); humanColorSel.value = String(humanColor); invalidateForbiddenMarkerCache(); updateStatus(); await refreshWinningRate(); if(!game.result && game.turn===engineColor) await engineTurn(true); };
   engineMoveBtn.onclick = async () => { await engineTurn(true); };
@@ -998,7 +999,6 @@
     game.reset();
     clearLog();
     errBox.textContent = '';
-    setLiveEvalEnabled(false);
     void refreshWinningRate();
     updateStatus();
   }
