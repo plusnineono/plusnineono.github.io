@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Renju Dojo 連珠道場 v5.3</title>
+<title>Renju Dojo 連珠道場 v5.4</title>
 <style>
   :root {
     --bg: #11151c;
@@ -58,7 +58,7 @@
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>Renju Dojo 連珠道場 v5.3</h1>
+    <h1>Renju Dojo 連珠道場 v5.4</h1>
     <div class="row">
       <button id="newGameBtn" class="primary">New game</button>
       <button id="undoBtn">Undo</button>
@@ -368,7 +368,18 @@
       if(this.history.length===0) return [{x:7,y:7,score:1e9,tag:'book-center'}];
 
       if(includeGlobalTactics){
-        for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) if(this.get(x,y)===EMPTY){
+        // Tactical patterns require empty cells within 4 of an existing stone;
+        // skip the rest to keep classifyMove (which is expensive) off cold squares.
+        const inRange = new Set();
+        for(const m of this.history){
+          for(let yy=Math.max(0,m.y-4); yy<=Math.min(SIZE-1,m.y+4); yy++){
+            for(let xx=Math.max(0,m.x-4); xx<=Math.min(SIZE-1,m.x+4); xx++){
+              if(this.get(xx,yy)===EMPTY) inRange.add(idx(xx,yy));
+            }
+          }
+        }
+        for(const id of inRange){
+          const x = id % SIZE, y = (id - x) / SIZE;
           const cl = this.classifyMove(x,y,color);
           if(!cl.legal) continue;
           if(['win','block-win','double-four','four','double-three','three','block-four','block-three'].includes(cl.tag)) pushMove(x, y, cl);
@@ -604,12 +615,28 @@
 
   function findImmediateWins(g, color){
     const wins = [];
-    for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) if(g.get(x,y)===EMPTY){
-      if(color===BLACK && !g.isLegalMove(x,y,color)) continue;
-      g.place(x,y,color);
-      const won = g.result===color;
-      g.undo();
-      if(won) wins.push({x, y, score:centerBonus(x,y), tag:'win'});
+    // A 5-in-row spans at most 4 cells, so a winning move must be within radius
+    // 4 of an existing stone of the same colour. Restricting the scan cuts the
+    // per-node cost dramatically — this function is called from hot paths.
+    if(!g.history.length){
+      return wins;
+    }
+    const seen = new Set();
+    for(const m of g.history){
+      if(m.color !== color) continue;
+      for(let yy=Math.max(0,m.y-4); yy<=Math.min(SIZE-1,m.y+4); yy++){
+        for(let xx=Math.max(0,m.x-4); xx<=Math.min(SIZE-1,m.x+4); xx++){
+          const id = idx(xx,yy);
+          if(seen.has(id)) continue;
+          seen.add(id);
+          if(g.get(xx,yy)!==EMPTY) continue;
+          if(color===BLACK && !g.isLegalMove(xx,yy,color)) continue;
+          g.place(xx,yy,color);
+          const won = g.result===color;
+          g.undo();
+          if(won) wins.push({x:xx, y:yy, score:centerBonus(xx,yy), tag:'win'});
+        }
+      }
     }
     wins.sort((a,b)=>b.score-a.score);
     return wins;
@@ -691,6 +718,95 @@
         return {move:defense.defenders[0], score:7e11, mode:'Forced defense'};
       }
       return null;
+    }
+    return null;
+  }
+
+  // Returns moves that create at least one four-threat for `color` (or win immediately).
+  function findFourMoves(g, color){
+    const result = [];
+    const cands = g.generateCandidateMoves(color, 60, true);
+    for(const c of cands){
+      if(g.get(c.x, c.y) !== EMPTY) continue;
+      if(color===BLACK && !g.isLegalMove(c.x, c.y, color)) continue;
+      g.set(c.x, c.y, color);
+      const wins = color===BLACK ? g.hasFiveAt(c.x,c.y,color) : g.hasAtLeastFiveAt(c.x,c.y,color);
+      const fours = wins ? 1 : g.countFoursCreated(c.x, c.y, color);
+      g.set(c.x, c.y, EMPTY);
+      if(fours >= 1 || wins) result.push(c);
+    }
+    result.sort((a,b)=>b.score-a.score);
+    return result;
+  }
+
+  // Boolean VCF (victory by continuous fours) solver — does `attacker` have a
+  // forced win where every attacker move is a four (immediate five-threat)?
+  // Defender's reply is the unique block (or attacker wins immediately).
+  function vcfHasWin(g, attacker, maxPly, deadline, ply=0){
+    if(performance.now() >= deadline) return false;
+    if(ply >= maxPly) return false;
+    if(g.result === attacker) return true;
+    if(g.result === other(attacker)) return false;
+
+    const winNow = findImmediateWins(g, attacker);
+    if(winNow.length) return true;
+
+    const fourMoves = findFourMoves(g, attacker);
+    if(!fourMoves.length) return false;
+
+    for(const move of fourMoves){
+      if(performance.now() >= deadline) return false;
+      g.place(move.x, move.y, attacker);
+      if(g.result === attacker){ g.undo(); return true; }
+      const winSpots = findImmediateWins(g, attacker);
+      let canWin;
+      if(winSpots.length === 0){
+        canWin = false;
+      } else if(winSpots.length >= 2){
+        canWin = true;            // double-four — defender can't block all
+      } else {
+        const block = winSpots[0];
+        if(other(attacker)===BLACK && !g.isLegalMove(block.x, block.y, BLACK)){
+          canWin = true;          // defender's only block is forbidden
+        } else {
+          g.place(block.x, block.y, other(attacker));
+          canWin = vcfHasWin(g, attacker, maxPly, deadline, ply+2);
+          g.undo();
+        }
+      }
+      g.undo();
+      if(canWin) return true;
+    }
+    return false;
+  }
+
+  function findVcfMove(g, attacker, maxPly, deadline){
+    if(performance.now() >= deadline) return null;
+    const winNow = findImmediateWins(g, attacker);
+    if(winNow.length) return winNow[0];
+    const fourMoves = findFourMoves(g, attacker);
+    for(const move of fourMoves){
+      if(performance.now() >= deadline) return null;
+      g.place(move.x, move.y, attacker);
+      if(g.result === attacker){ g.undo(); return move; }
+      const winSpots = findImmediateWins(g, attacker);
+      let canWin;
+      if(winSpots.length === 0){
+        canWin = false;
+      } else if(winSpots.length >= 2){
+        canWin = true;
+      } else {
+        const block = winSpots[0];
+        if(other(attacker)===BLACK && !g.isLegalMove(block.x, block.y, BLACK)){
+          canWin = true;
+        } else {
+          g.place(block.x, block.y, other(attacker));
+          canWin = vcfHasWin(g, attacker, maxPly, deadline, 2);
+          g.undo();
+        }
+      }
+      g.undo();
+      if(canWin) return move;
     }
     return null;
   }
@@ -798,10 +914,12 @@
     function quiescence(alpha, beta, side, ply){
       nodes++;
       if(performance.now() >= deadline) return evaluateBoard(g, color) * (side===color ? 1 : -1);
+      if(g.result) return g.result===side ? 1e12-ply : -1e12+ply;
+      if(ply > 24) return evaluateBoard(g, color) * (side===color ? 1 : -1);
       const stand = evaluateBoard(g, color) * (side===color ? 1 : -1);
       if(stand >= beta) return beta;
       if(alpha < stand) alpha = stand;
-      const moves = forcingMoves(g, side).slice(0, 4);
+      const moves = forcingMoves(g, side).slice(0, 8);
       for(const m of moves){
         if(performance.now() >= deadline) break;
         g.place(m.x,m.y,side);
@@ -822,9 +940,10 @@
       if(g.result) return g.result===side ? 1e12-ply : -1e12+ply;
       if(depth===0) return quiescence(alpha, beta, side, ply);
 
+      // Immediate-win shortcut only — a forced defense merely survives, not wins.
       if(depth <= 2){
-        const tactical = chooseForcedSequenceMove(g, side, deadline);
-        if(tactical && tactical.move) return tactical.score * (side===color ? 1 : -1);
+        const wins = findImmediateWins(g, side);
+        if(wins.length) return (1e12 - ply) * (side===color ? 1 : -1);
       }
 
       const key = ttKey(side);
@@ -861,11 +980,14 @@
       for(const m of moves){
         if(performance.now() >= deadline) break;
         g.place(m.x,m.y,side);
+        // Tactical extension: chase forcing lines a ply deeper
+        const ext = (depth >= 2 && depth <= 8 && ['win','double-four','four','block-win'].includes(m.tag)) ? 1 : 0;
+        const nextDepth = depth - 1 + ext;
         let score;
-        if(first){ score = -negamax(depth-1, -beta, -alpha, other(side), ply+1); first=false; }
+        if(first){ score = -negamax(nextDepth, -beta, -alpha, other(side), ply+1); first=false; }
         else {
-          score = -negamax(depth-1, -alpha-1, -alpha, other(side), ply+1);
-          if(score > alpha && score < beta) score = -negamax(depth-1, -beta, -alpha, other(side), ply+1);
+          score = -negamax(nextDepth, -alpha-1, -alpha, other(side), ply+1);
+          if(score > alpha && score < beta) score = -negamax(nextDepth, -beta, -alpha, other(side), ply+1);
         }
         g.undo();
         m.searchScore = score;
@@ -893,10 +1015,37 @@
       if(g.isLegalMove(book.x, book.y, color)) return {move:{x:book.x,y:book.y}, score:5e10, nodes:0, mode:book.note, candidates:[{x:book.x,y:book.y,score:5e10,tag:'book'}]};
     }
 
-    const tactical = chooseForcedSequenceMove(g, color, deadline);
-    if(tactical) return {move:tactical.move, score:tactical.score, nodes:0, mode:tactical.mode, candidates:tactical.move?[{...tactical.move, score:tactical.score, tag:tactical.mode}]:[]};
+    // Immediate win is always best
+    const myWins = findImmediateWins(g, color);
+    if(myWins.length){
+      const w = myWins[0];
+      return {move:{x:w.x, y:w.y}, score:1e12, nodes:0, mode:'Immediate win', candidates:[{x:w.x,y:w.y,score:1e12,tag:'win'}]};
+    }
 
-    const rootMoves = g.generateCandidateMoves(color, 28, true);
+    // VCF probe: spend up to ~25% of the time budget on a focused forced-win solver.
+    const totalBudget = getSearchBudgetMs();
+    const vcfDeadline = performance.now() + Math.min(1500, totalBudget * 0.25);
+    const vcfMove = findVcfMove(g, color, 16, vcfDeadline);
+    if(vcfMove){
+      return {move:{x:vcfMove.x,y:vcfMove.y}, score:1e12, nodes:0, mode:'VCF Win', candidates:[{x:vcfMove.x,y:vcfMove.y,score:1e12,tag:'VCF'}]};
+    }
+
+    // Opponent VCF probe: if the opponent has a forced win, we must defend.
+    // Bias root candidate ordering toward moves that disrupt the opponent's VCF.
+    const oppVcfDeadline = performance.now() + Math.min(700, totalBudget * 0.12);
+    const oppVcfMove = findVcfMove(g, other(color), 12, oppVcfDeadline);
+
+    const rootMoves = g.generateCandidateMoves(color, 36, true);
+    if(oppVcfMove){
+      // Put a move that occupies the opponent's first VCF square at the front;
+      // alpha-beta will then verify which root move actually neutralises the threat.
+      const blockIdx = rootMoves.findIndex(m => m.x===oppVcfMove.x && m.y===oppVcfMove.y);
+      if(blockIdx > 0) rootMoves.unshift(rootMoves.splice(blockIdx, 1)[0]);
+      else if(blockIdx < 0){
+        const cl = g.classifyMove(oppVcfMove.x, oppVcfMove.y, color);
+        if(cl.legal) rootMoves.unshift({x:oppVcfMove.x, y:oppVcfMove.y, score:cl.score, tag:cl.tag});
+      }
+    }
     if(!rootMoves.length){
       const fallback = g.findAnyLegalMove(color);
       return fallback
