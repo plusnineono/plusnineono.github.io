@@ -77,6 +77,35 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 </script>
 <style>html{ scroll-behavior: smooth; }</style>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="styles.css">
 <meta name="twitter:title" content="Publications – Tasuku Ono">
@@ -182,8 +211,12 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <section id="presentations" class="level3">
 <h3 class="anchored" data-anchor-id="presentations">Presentations</h3>
 <ul>
-<li>Quantum-Projection-Noise-Limited Readout in a Dense NV Ensemble at Room Temperature. TO et al.&nbsp;<a href="https://schedule.aps.org/damop/2025/events/S00/76">DAMOP</a> (2025).</li>
-<li>Spin squeezing in an ensemble of nitrogen-vacancy centers in diamond. Wu et al.&nbsp;incl.&nbsp;TO. <a href="https://schedule.aps.org/damop/2025/events/S00/77">DAMOP</a> (2025).</li>
+<li>Towards Entanglement-Enhanced Sensing in Solid State Spins. TO et al.&nbsp;<a href="https://www.cecam.org/workshop-details/defects-in-solids-for-quantum-technologies-1495">DSQT Workshop</a> (2026).</li>
+<li>Towards Direct Observation of Spin Squeezing in Solid State Systems. TO et al.&nbsp;<a href="https://meetings-archive.aps.org/damop/2026/d00/98">DAMOP</a> (2026).</li>
+<li>The T1 Puzzle: Understanding Low Temperature Spin Relaxation in Dense Ensembles of Nitrogen-Vacancy Centers. Yang et al.&nbsp;incl.&nbsp;TO. <a href="https://meetings-archive.aps.org/damop/2026/h00/72/">DAMOP</a> (2026).</li>
+<li>Quantum-Projection-Noise-Limited Readout in a Dense NV Ensemble at Room Temperature. TO et al.&nbsp;<a href="https://meetings-archive.aps.org/damop/2025/s00/76">DAMOP</a> (2025).</li>
+<li>Spin squeezing in an ensemble of nitrogen-vacancy centers in diamond. Wu et al.&nbsp;incl.&nbsp;TO. <a href="https://meetings-archive.aps.org/damop/2025/s00/77">DAMOP</a> (2025).</li>
+<li>Milli-Kelvin Platform for Quantum Many-Body Dynamics with Solid State Spin Defects. Liu et al.&nbsp;incl.&nbsp;TO. <a href="https://meetings-archive.aps.org/damop/2025/s00/84">DAMOP</a> (2025).</li>
 </ul>
 <div style="height: 20px;">
 
@@ -204,6 +237,9 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <section id="presentations-1" class="level3">
 <h3 class="anchored" data-anchor-id="presentations-1">Presentations</h3>
 <ul>
+<li>Toward <span class="math inline">\(10^4\)</span> heavy polyatomic molecules in an optical dipole trap. Lasner et al.&nbsp;incl.&nbsp;TO. <a href="https://meetings.aps.org/Meeting/DAMOP25/Session/B07.4">DAMOP</a> (2025).</li>
+<li>Progress toward an ultralight dark matter search with ultracold SrOH molecules. Li et al.&nbsp;incl.&nbsp;TO. <a href="https://meetings-archive.aps.org/damop/2025/s00/140">DAMOP</a> (2025).</li>
+<li>Magneto-optical trapping of SrOH molecules for ultralight dark matter searches. Lasner et al.&nbsp;incl.&nbsp;TO. <a href="https://meetings-archive.aps.org/smt/2025/apr-2wa/6/">APS Global Summit</a> (2025).</li>
 <li>Magneto-optical Trapping of SrOH. Sawaoka et al.&nbsp;incl.&nbsp;TO. <a href="https://meetings.aps.org/Meeting/DAMOP24/Session/F08.5">DAMOP</a> (2024).</li>
 <li>Towards beyond-Standard Model searches with ultracold SrOH molecules. TO et al.&nbsp;<a href="https://meetings.aps.org/Meeting/APR23/Session/E01.14">APS April Meeting</a> (2023).</li>
 <li>Progress Towards Laser Cooled Polyatomic Molecules for Beyond-Standard-Model Physics Searches. Frenett et al.&nbsp;incl.&nbsp;TO. <a href="https://meetings.aps.org/Meeting/DAMOP23/Session/V01.40">DAMOP</a> (2023).</li>

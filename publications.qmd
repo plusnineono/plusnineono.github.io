@@ -9,8 +9,12 @@ title: "Publications"
 * Spin squeezing in an ensemble of nitrogen-vacancy centers in diamond. Wu et al. incl. TO. [Nature 646, 74–80](https://www.nature.com/articles/s41586-025-09524-8) (2025).
 
 ### Presentations
-* Quantum-Projection-Noise-Limited Readout in a Dense NV Ensemble at Room Temperature. TO et al. [DAMOP](https://schedule.aps.org/damop/2025/events/S00/76) (2025).
-* Spin squeezing in an ensemble of nitrogen-vacancy centers in diamond. Wu et al. incl. TO. [DAMOP](https://schedule.aps.org/damop/2025/events/S00/77) (2025).
+* Towards Entanglement-Enhanced Sensing in Solid State Spins. TO et al. [DSQT Workshop](https://www.cecam.org/workshop-details/defects-in-solids-for-quantum-technologies-1495) (2026).
+* Towards Direct Observation of Spin Squeezing in Solid State Systems. TO et al. [DAMOP](https://meetings-archive.aps.org/damop/2026/d00/98) (2026).
+* The T1 Puzzle: Understanding Low Temperature Spin Relaxation in Dense Ensembles of Nitrogen-Vacancy Centers. Yang et al. incl. TO. [DAMOP](https://meetings-archive.aps.org/damop/2026/h00/72/) (2026).
+* Quantum-Projection-Noise-Limited Readout in a Dense NV Ensemble at Room Temperature. TO et al. [DAMOP](https://meetings-archive.aps.org/damop/2025/s00/76) (2025).
+* Spin squeezing in an ensemble of nitrogen-vacancy centers in diamond. Wu et al. incl. TO. [DAMOP](https://meetings-archive.aps.org/damop/2025/s00/77) (2025).
+* Milli-Kelvin Platform for Quantum Many-Body Dynamics with Solid State Spin Defects. Liu et al. incl. TO. [DAMOP](https://meetings-archive.aps.org/damop/2025/s00/84) (2025).
 
 <div style="height: 20px;"></div>
 
@@ -23,6 +27,9 @@ title: "Publications"
 * Zeeman-Sisyphus Deceleration for Heavy Molecules with Perturbed Excited-State Structure. Sawaoka et al. incl. TO. [Physical Review A 107 (2), 022810](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.107.022810) (2022).
 
 ### Presentations
+* Toward $10^4$ heavy polyatomic molecules in an optical dipole trap. Lasner et al. incl. TO. [DAMOP](https://meetings.aps.org/Meeting/DAMOP25/Session/B07.4) (2025).
+* Progress toward an ultralight dark matter search with ultracold SrOH molecules. Li et al. incl. TO. [DAMOP](https://meetings-archive.aps.org/damop/2025/s00/140) (2025).
+* Magneto-optical trapping of SrOH molecules for ultralight dark matter searches. Lasner et al. incl. TO. [APS Global Summit](https://meetings-archive.aps.org/smt/2025/apr-2wa/6/) (2025).
 * Magneto-optical Trapping of SrOH. Sawaoka et al. incl. TO. [DAMOP](https://meetings.aps.org/Meeting/DAMOP24/Session/F08.5) (2024).
 * Towards beyond-Standard Model searches with ultracold SrOH molecules. TO et al. [APS April Meeting](https://meetings.aps.org/Meeting/APR23/Session/E01.14) (2023).
 * Progress Towards Laser Cooled Polyatomic Molecules for Beyond-Standard-Model Physics Searches. Frenett et al. incl. TO. [DAMOP](https://meetings.aps.org/Meeting/DAMOP23/Session/V01.40) (2023).
