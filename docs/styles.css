@@ -1,63 +1,84 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap");
 
-/* Site polish: typography, spacing, and subtle surfaces */
+/* Researcher-site polish: warm cream base, soft surfaces, refined typography */
 :root {
-  --page-bg: #f4f1ea;
-  --page-bg-soft: #fbfaf7;
-  --ink: #1d2430;
-  --ink-muted: #556070;
-  --line: #d8d0c2;
-  --accent: #7a4b2d;
-  --accent-soft: #efe3d6;
-  --card: rgba(255, 255, 255, 0.78);
-  --shadow: 0 14px 34px rgba(30, 28, 25, 0.08);
+  --page-bg: #f6f1e7;
+  --page-bg-soft: #fbf7ee;
+  --ink: #1f2530;
+  --ink-soft: #2c2a26;
+  --ink-muted: #6b6458;
+  --line: rgba(122, 75, 45, 0.16);
+  --line-soft: rgba(122, 75, 45, 0.10);
+  --accent: #8a4a22;
+  --accent-hover: #6a3617;
+  --accent-soft: rgba(138, 74, 34, 0.10);
+  --card: rgba(255, 252, 245, 0.55);
+  --shadow: 0 1px 0 rgba(122, 75, 45, 0.04);
+  --sans: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
+  --serif: "Source Serif 4", "Iowan Old Style", "Apple Garamond", "Baskerville", "Times New Roman", "Noto Sans JP", "Hiragino Mincho ProN", serif;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   color: var(--ink);
   background:
-    radial-gradient(circle at 12% 8%, rgba(209, 186, 160, 0.22), transparent 45%),
-    radial-gradient(circle at 92% 14%, rgba(165, 186, 200, 0.18), transparent 38%),
+    radial-gradient(1200px 600px at 12% -10%, rgba(214, 175, 132, 0.22), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(180, 150, 120, 0.10), transparent 55%),
     linear-gradient(180deg, var(--page-bg-soft), var(--page-bg));
-  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
+  background-attachment: fixed;
+  font-family: var(--sans);
+  font-size: 17px;
   line-height: 1.72;
+  letter-spacing: 0.005em;
 }
 
+/* ---------- Navbar ---------- */
 .navbar {
-  border-bottom: 1px solid rgba(216, 208, 194, 0.85);
-  background: rgba(251, 250, 247, 0.86);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 8px 24px rgba(30, 28, 25, 0.03);
+  border-bottom: 1px solid var(--line-soft);
+  background: rgba(251, 247, 238, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: none;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
 }
 
 .navbar-brand,
 .navbar-nav .nav-link {
-  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
-  letter-spacing: 0.02em;
+  font-family: var(--sans);
+  letter-spacing: 0.04em;
 }
 
 .navbar-brand {
   font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink-soft) !important;
 }
 
 .navbar-nav {
   align-items: center;
+  gap: 0.15rem;
 }
 
 .navbar-nav .nav-item {
   display: flex;
   align-items: center;
+  margin: 0;
 }
 
 .navbar-nav .nav-link {
   color: var(--ink-muted);
   font-weight: 500;
+  font-size: 0.88rem;
   line-height: 1.15;
   display: flex;
   align-items: center;
   position: relative;
-  padding-top: 0.55rem;
-  padding-bottom: 0.55rem;
+  padding: 0.5rem 0.75rem;
+  transition: color 160ms ease;
 }
 
 .navbar-nav .nav-link:hover,
@@ -66,35 +87,37 @@ body {
 }
 
 .navbar-nav .nav-link.active {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .navbar-nav .nav-link .menu-text {
   display: block;
   line-height: 1.1;
-  transform: translateY(0.02em);
-}
-
-/* Optical correction: "Home" has no descenders, so it reads slightly high */
-.navbar-nav .nav-link[href="./index.html"] .menu-text {
-  transform: translateY(0.16em);
 }
 
 .navbar-nav .nav-link::after {
   content: "";
   position: absolute;
-  left: 0.5rem;
-  right: 0.5rem;
-  bottom: 0.2rem;
-  height: 2px;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.18rem;
+  height: 1.5px;
   border-radius: 999px;
   background: transparent;
+  transition: background 160ms ease;
 }
 
 .navbar-nav .nav-link.active::after {
-  background: rgba(122, 75, 45, 0.42);
+  background: rgba(138, 74, 34, 0.55);
 }
 
+/* Search icon */
+.aa-DetachedSearchButton,
+.navbar #quarto-search a {
+  color: var(--ink-muted);
+}
+
+/* ---------- Sidebar (kept transparent) ---------- */
 #quarto-sidebar,
 #quarto-sidebar .sidebar-menu-container,
 #quarto-sidebar .sidebar-navigation {
@@ -107,131 +130,173 @@ body {
   background: transparent;
 }
 
+/* ---------- Main content (a softer, less boxy surface) ---------- */
 main.content {
-  max-width: 46rem;
+  max-width: 44rem;
   background: var(--card);
-  border: 1px solid rgba(216, 208, 194, 0.75);
-  border-radius: 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
   box-shadow: var(--shadow);
-  padding: clamp(1.2rem, 2vw, 2rem) clamp(1rem, 3vw, 2.4rem);
-  margin-top: 1.2rem;
-  margin-bottom: 2.2rem;
+  padding: clamp(1.4rem, 2.4vw, 2.4rem) clamp(1.1rem, 3vw, 2.6rem);
+  margin-top: 1.8rem;
+  margin-bottom: 3rem;
 }
 
-.page-back-nav {
-  margin-top: 1.6rem;
-  padding-top: 0.8rem;
-  border-top: 1px solid rgba(122, 75, 45, 0.14);
+/* ---------- Title block ---------- */
+.quarto-title-block {
+  margin-bottom: 1.6rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line-soft);
 }
 
-.page-back-button {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: rgba(75, 52, 40, 0.82);
-  border-radius: 0;
-  padding: 0;
-  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
-  font-size: 0.88rem;
-  line-height: 1.1;
-  cursor: pointer;
-  transition: color 140ms ease, transform 140ms ease;
-  text-decoration: underline;
-  text-decoration-color: rgba(122, 75, 45, 0.25);
-  text-underline-offset: 0.14em;
-}
-
-.page-back-button:hover {
-  color: rgba(98, 56, 31, 0.95);
-  text-decoration-color: rgba(98, 56, 31, 0.45);
-}
-
-.page-back-button:active {
-  transform: translateY(1px);
-}
-
-.page-back-button:focus-visible {
-  outline: 2px solid rgba(122, 75, 45, 0.35);
-  outline-offset: 2px;
+.quarto-title-block:empty {
+  display: none;
 }
 
 .quarto-title-block .title {
-  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #1f1c19;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 1.95rem;
+  letter-spacing: -0.005em;
+  color: var(--ink-soft);
+  margin-bottom: 0.2rem;
 }
 
-.quarto-title-block {
-  margin-bottom: 1.4rem;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid rgba(216, 208, 194, 0.7);
+/* Pages that opt out of the title block get a touch more breathing room up top */
+body:not(.quarto-title-block) main.content > :first-child {
+  margin-top: 0.2rem;
 }
 
-h2, h3, h4 {
-  font-family: "Noto Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
-  color: #2c2a26;
+/* ---------- Headings ---------- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--sans);
+  color: var(--ink-soft);
   font-weight: 600;
-  letter-spacing: 0.01em;
-  margin-top: 1.7rem;
-  margin-bottom: 0.55rem;
+  letter-spacing: 0.005em;
+  line-height: 1.3;
 }
 
 h2 {
-  font-size: 1.22rem;
+  font-size: 1.18rem;
+  margin-top: 2.1rem;
+  margin-bottom: 0.6rem;
+  padding-left: 0.7rem;
+  border-left: 2px solid rgba(138, 74, 34, 0.55);
 }
 
+h3 {
+  font-size: 1.02rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.4rem;
+  color: var(--ink-soft);
+}
+
+h4 {
+  font-size: 0.96rem;
+  margin-top: 1.2rem;
+  margin-bottom: 0.35rem;
+  color: var(--ink-muted);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Body text ---------- */
 p {
   margin-bottom: 0.95rem;
 }
 
 ul, ol {
-  padding-left: 1.25rem;
+  padding-left: 1.3rem;
   margin-bottom: 1rem;
 }
 
 li + li {
-  margin-top: 0.28rem;
+  margin-top: 0.32rem;
 }
 
+li::marker {
+  color: rgba(138, 74, 34, 0.55);
+}
+
+/* ---------- Horizontal rule (thin, elegant) ---------- */
 hr {
   border: 0;
-  border-top: 3px solid rgba(122, 75, 45, 0.34);
-  margin: 1.6rem 0;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(138, 74, 34, 0.35),
+    transparent
+  );
+  margin: 1.8rem 0;
 }
 
+/* ---------- Links ---------- */
 a {
   color: var(--accent);
-  text-decoration-color: rgba(122, 75, 45, 0.35);
-  text-underline-offset: 0.12em;
+  text-decoration: underline;
+  text-decoration-color: rgba(138, 74, 34, 0.30);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  transition: color 140ms ease, text-decoration-color 140ms ease;
 }
 
 a:hover {
-  color: #62381f;
-  text-decoration-color: rgba(98, 56, 31, 0.6);
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
 }
 
+/* Brand link in navbar should not be underlined */
+.navbar-brand,
+.navbar-brand:hover {
+  text-decoration: none;
+}
+
+/* ---------- Blockquote ---------- */
 blockquote {
-  border-left: 3px solid rgba(122, 75, 45, 0.35);
-  padding-left: 0.9rem;
+  border-left: 2px solid rgba(138, 74, 34, 0.45);
+  padding: 0.1rem 0 0.1rem 1rem;
+  margin: 1rem 0;
   color: var(--ink-muted);
+  font-style: italic;
 }
 
+/* ---------- TOC ---------- */
 #TOC,
 .sidebar nav[role="doc-toc"] {
-  background: rgba(255, 255, 255, 0.66);
-  border: 1px solid rgba(216, 208, 194, 0.7);
-  border-radius: 12px;
-  padding: 0.75rem 0.85rem;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line-soft);
+  border-radius: 0;
+  padding: 0.4rem 0.9rem;
 }
 
-#TOC .nav-link {
+#TOC .nav-link,
+nav[role="doc-toc"] .nav-link {
   color: var(--ink-muted);
+  font-size: 0.85rem;
+  padding: 0.18rem 0;
+  border-left: 0;
 }
 
 #TOC .nav-link:hover,
-#TOC .nav-link.active {
+#TOC .nav-link.active,
+nav[role="doc-toc"] .nav-link:hover,
+nav[role="doc-toc"] .nav-link.active {
   color: var(--accent);
+}
+
+.sidebar nav[role="doc-toc"] > h2,
+#toc-title {
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border: 0;
+  padding: 0;
+  margin-bottom: 0.5rem;
 }
 
 .quarto-listing-category,
@@ -239,15 +304,78 @@ blockquote {
   color: var(--ink-muted);
 }
 
+/* ---------- Code ---------- */
 pre, code {
   font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
+code:not(pre code) {
+  background: rgba(138, 74, 34, 0.07);
+  color: var(--accent-hover);
+  padding: 0.08em 0.32em;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+
+pre {
+  background: rgba(255, 252, 245, 0.7);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+}
+
+/* ---------- Back button ---------- */
+.page-back-nav {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-soft);
+}
+
+.page-back-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: color 140ms ease, transform 140ms ease;
+  text-decoration: underline;
+  text-decoration-color: rgba(138, 74, 34, 0.25);
+  text-underline-offset: 0.14em;
+}
+
+.page-back-button:hover {
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
+}
+
+.page-back-button:active {
+  transform: translateY(1px);
+}
+
+.page-back-button:focus-visible {
+  outline: 2px solid rgba(138, 74, 34, 0.35);
+  outline-offset: 2px;
+}
+
+/* ---------- Responsive ---------- */
 @media (max-width: 991.98px) {
   main.content {
-    border-radius: 12px;
-    padding: 1rem 1rem 1.35rem;
-    margin-top: 0.8rem;
+    border-radius: 10px;
+    padding: 1.1rem 1.05rem 1.4rem;
+    margin-top: 0.9rem;
+  }
+
+  body {
+    font-size: 16px;
+  }
+
+  .quarto-title-block .title {
+    font-size: 1.65rem;
   }
 }
 

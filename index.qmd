@@ -1,6 +1,7 @@
 ---
-title: "Tasuku Ono"
+pagetitle: "Tasuku Ono"
 sidebar: false
+title-block-style: none
 ---
 
 I am interested in exploring the intersection between theory and experiments on quantum many-body systems in AMO and condensed-matter physics.
