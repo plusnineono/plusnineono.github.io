@@ -1,11 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Renju Dojo 連珠道場 v5.4</title>
+---
+pagetitle: "2D Ising Model"
+title-block-style: none
+page-layout: full
+format:
+  html:
+    toc: false
+    smooth-scroll: true
+    sanitize: false
+---
+
+```{=html}
 <style>
-  :root {
+  .renju-app {
     --bg: #11151c;
     --panel: #1b2430;
     --panel2: #243041;
@@ -17,45 +23,47 @@
     --line: #8b5a2b;
     --board: #d8b574;
     --board-size: min(72vh, 680px);
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    display: block;
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-  .wrap { display: grid; grid-template-columns: minmax(0, var(--board-size)) minmax(320px, 360px); gap: 16px; padding: 14px; max-width: 1100px; margin: 0 auto; align-items: start; }
-  .panel { background: linear-gradient(180deg, var(--panel), var(--panel2)); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); padding: 14px; }
-  h1 { font-size: 24px; margin: 0; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-  button, select, input { background: #0f1720; color: var(--text); border: 1px solid #3d4a5d; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
-  button:hover { filter: brightness(1.1); cursor: pointer; }
-  button.primary { background: #1b4d8a; }
-  .boardBox { overflow: visible; }
-  canvas { display: block; width: min(100%, var(--board-size)); max-width: 100%; aspect-ratio: 1 / 1; background: var(--board); border-radius: 18px; border: 2px solid #9d7741; cursor: pointer; touch-action: manipulation; margin: 0 auto; }
-  .infoGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-  .card { background: rgba(0,0,0,0.18); border-radius: 14px; padding: 10px 12px; }
-  .card .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-  .card .value { font-size: 15px; font-weight: 600; }
-  .resultBanner { margin-top: 14px; padding: 14px 16px; border-radius: 14px; font-weight: 800; font-size: 18px; letter-spacing: 0.02em; text-align: center; background: rgba(255, 209, 102, 0.14); border: 1px solid rgba(255, 209, 102, 0.35); color: #ffe29a; display: none; }
-  .resultBanner.show { display: block; }
-  .resultBanner.win-black { background: rgba(17, 19, 21, 0.9); border-color: rgba(255,255,255,0.16); color: #f5f7fa; }
-  .resultBanner.win-white { background: rgba(240, 244, 248, 0.95); border-color: rgba(120,130,145,0.35); color: #18212b; }
-  .winRateBox { background: rgba(0,0,0,0.2); border-radius: 14px; padding: 14px; min-height: 140px; display: grid; place-items: center; text-align: center; }
-  .winRateBar { width: min(100%, 300px); height: 26px; border-radius: 999px; overflow: hidden; display: flex; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 1px 3px rgba(0,0,0,0.22); }
-  .winRateFillBlack { background: linear-gradient(90deg, #495668, #9fb0c5); transition: width 180ms ease; }
-  .winRateFillWhite { background: linear-gradient(90deg, #ffffff, #d8dee7); transition: width 180ms ease; }
-  .winRateLegend { width: min(100%, 300px); display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; color: var(--muted); }
-  .winRateValue { font-size: 38px; font-weight: 800; line-height: 1; margin-top: 14px; }
-  .cand { margin-top: 10px; font-size: 13px; line-height: 1.55; }
-  .hidden { display: none; }
-  .footer { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.45; }
-  .info-tip { position: relative; display: inline-flex; align-items: center; cursor: help; color: var(--muted); font-size: 13px; font-weight: 400; }
-  .info-tip-text { visibility: hidden; opacity: 0; background: #1b2430; color: var(--text); font-size: 12px; border-radius: 10px; padding: 9px 12px; width: 230px; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 8px); border: 1px solid #3d4a5d; line-height: 1.5; transition: opacity 0.15s; z-index: 20; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
-  .info-tip:hover .info-tip-text { visibility: visible; opacity: 1; }
+  .renju-app * { box-sizing: border-box; }
+  .renju-app .wrap { display: grid; grid-template-columns: minmax(0, var(--board-size)) minmax(320px, 360px); gap: 16px; padding: 4px 0 14px; max-width: 1100px; margin: 0 auto; align-items: start; }
+  .renju-app .panel { background: linear-gradient(180deg, var(--panel), var(--panel2)); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); padding: 14px; }
+  .renju-app h1 { font-size: 24px; margin: 0; color: var(--text); }
+  .renju-app .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .renju-app button, .renju-app select, .renju-app input { background: #0f1720; color: var(--text); border: 1px solid #3d4a5d; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+  .renju-app button:hover { filter: brightness(1.1); cursor: pointer; }
+  .renju-app button.primary { background: #1b4d8a; }
+  .renju-app .boardBox { overflow: visible; }
+  .renju-app canvas { display: block; width: min(100%, var(--board-size)); max-width: 100%; aspect-ratio: 1 / 1; background: var(--board); border-radius: 18px; border: 2px solid #9d7741; cursor: pointer; touch-action: manipulation; margin: 0 auto; }
+  .renju-app .infoGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .renju-app .card { background: rgba(0,0,0,0.18); border-radius: 14px; padding: 10px 12px; }
+  .renju-app .card .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .renju-app .card .value { font-size: 15px; font-weight: 600; }
+  .renju-app .resultBanner { margin-top: 14px; padding: 14px 16px; border-radius: 14px; font-weight: 800; font-size: 18px; letter-spacing: 0.02em; text-align: center; background: rgba(255, 209, 102, 0.14); border: 1px solid rgba(255, 209, 102, 0.35); color: #ffe29a; display: none; }
+  .renju-app .resultBanner.show { display: block; }
+  .renju-app .resultBanner.win-black { background: rgba(17, 19, 21, 0.9); border-color: rgba(255,255,255,0.16); color: #f5f7fa; }
+  .renju-app .resultBanner.win-white { background: rgba(240, 244, 248, 0.95); border-color: rgba(120,130,145,0.35); color: #18212b; }
+  .renju-app .winRateBox { background: rgba(0,0,0,0.2); border-radius: 14px; padding: 14px; min-height: 140px; display: grid; place-items: center; text-align: center; }
+  .renju-app .winRateBar { width: min(100%, 300px); height: 26px; border-radius: 999px; overflow: hidden; display: flex; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 1px 3px rgba(0,0,0,0.22); }
+  .renju-app .winRateFillBlack { background: linear-gradient(90deg, #495668, #9fb0c5); transition: width 180ms ease; }
+  .renju-app .winRateFillWhite { background: linear-gradient(90deg, #ffffff, #d8dee7); transition: width 180ms ease; }
+  .renju-app .winRateLegend { width: min(100%, 300px); display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .renju-app .winRateValue { font-size: 38px; font-weight: 800; line-height: 1; margin-top: 14px; }
+  .renju-app .cand { margin-top: 10px; font-size: 13px; line-height: 1.55; }
+  .renju-app .hidden { display: none; }
+  .renju-app .footer { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .renju-app .info-tip { position: relative; display: inline-flex; align-items: center; cursor: help; color: var(--muted); font-size: 13px; font-weight: 400; }
+  .renju-app .info-tip-text { visibility: hidden; opacity: 0; background: #1b2430; color: var(--text); font-size: 12px; border-radius: 10px; padding: 9px 12px; width: 230px; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 8px); border: 1px solid #3d4a5d; line-height: 1.5; transition: opacity 0.15s; z-index: 20; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  .renju-app .info-tip:hover .info-tip-text { visibility: visible; opacity: 1; }
   @media (max-width: 1080px) {
-    :root { --board-size: min(82vw, 680px); }
-    .wrap { grid-template-columns: 1fr; max-width: 760px; }
+    .renju-app { --board-size: min(82vw, 680px); }
+    .renju-app .wrap { grid-template-columns: 1fr; max-width: 760px; }
   }
 </style>
-</head>
-<body>
+
+<div class="renju-app">
 <div class="wrap">
   <div class="panel">
     <h1>Renju Dojo 連珠道場 v5.4</h1>
@@ -109,6 +117,8 @@
     <div id="errBox" class="cand" style="margin-top:10px;color:#ffb4b4;"></div>
   </div>
 </div>
+</div>
+
 <script>
 (() => {
   const SIZE = 15, EMPTY = 0, BLACK = 1, WHITE = 2;
@@ -535,7 +545,7 @@
 
   function drawBoard(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--board');
+    ctx.fillStyle = getComputedStyle(canvas).getPropertyValue('--board') || '#d8b574';
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.strokeStyle = '#6e4a23'; ctx.lineWidth = 1.3;
     for(let i=0;i<SIZE;i++){
@@ -1158,5 +1168,4 @@
   init();
 })();
 </script>
-</body>
-</html>
+```
