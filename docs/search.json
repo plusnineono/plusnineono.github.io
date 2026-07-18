@@ -116,7 +116,7 @@
     "href": "renju_engine.html",
     "title": "Renju Dojo 連珠道場 v5.4",
     "section": "",
-    "text": "New game\n      Undo\n      Switch sides\n      Engine move now\n      \n        Human plays Black\n        Human plays White\n      \n      \n        Fast 1000 ms\n        Normal 2500 ms\n        Long 8000 ms\n      \n    \n    \n    \n  \n  \n    \n      TurnBlack\n      ResultPlaying\n      EngineIdle\n      Nodes0\n    \n    \n      Winning Rate ℹCalculated by the engine using the thinking time set above. A longer thinking time gives a deeper search and a more accurate win rate estimate.\n      On\n    \n    \n      \n        \n          \n          \n        \n        \n          Black 50%\n          White 50%\n        \n        Even\n      \n    \n    \n      Top candidates\n      Off\n    \n    No search yet."
+    "text": "New game\n      Undo\n      Switch sides\n      Engine move now\n      \n        Human plays Black\n        Human plays White\n      \n      \n        Fast 1000 ms\n        Normal 2500 ms\n        Long 8000 ms\n      \n    \n  \n  \n    \n      TurnBlack\n      ResultPlaying\n      EngineIdle\n      Nodes0\n    \n    \n      Winning Rate ℹCalculated by the engine using the thinking time set above. A longer thinking time gives a deeper search and a more accurate win rate estimate.\n      On\n    \n    \n      \n        \n          \n          \n        \n        \n          Black 50%\n          White 50%\n        \n        Even\n      \n    \n    \n      Top candidates\n      Off\n    \n    No search yet."
   },
   {
     "objectID": "minneapolis.html",
