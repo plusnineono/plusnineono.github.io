@@ -130,11 +130,12 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <!-- margin-sidebar -->
     
 <!-- main -->
-<main class="content column-page" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">Renju Dojo 連珠道場 v5.4</h1></header>
+<main class="content page-columns page-full column-body" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">Renju Dojo 連珠道場 v5.4</h1></header>
 
 
 
 
+<div class="column-screen-inset">
 <style>
   .renju-app {
     --bg: #11151c;
@@ -153,7 +154,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
     display: block;
   }
   .renju-app * { box-sizing: border-box; }
-  .renju-app .wrap { display: grid; grid-template-columns: minmax(0, var(--board-size)) minmax(320px, 360px); gap: 16px; padding: 4px 0 14px; max-width: 1100px; margin: 0 auto; align-items: start; }
+  .renju-app .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; padding: 4px 16px 14px; max-width: 1080px; margin: 0 auto; align-items: start; }
   .renju-app .panel { background: linear-gradient(180deg, var(--panel), var(--panel2)); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); padding: 14px; }
   .renju-app h1 { font-size: 24px; margin: 0; color: var(--text); }
   .renju-app .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
@@ -161,7 +162,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
   .renju-app button:hover { filter: brightness(1.1); cursor: pointer; }
   .renju-app button.primary { background: #1b4d8a; }
   .renju-app .boardBox { overflow: visible; }
-  .renju-app canvas { display: block; width: min(100%, var(--board-size)); max-width: 100%; aspect-ratio: 1 / 1; background: var(--board); border-radius: 18px; border: 2px solid #9d7741; cursor: pointer; touch-action: manipulation; margin: 0 auto; }
+  .renju-app canvas { display: block; width: 100%; max-width: 100%; aspect-ratio: 1 / 1; height: auto; background: var(--board); border-radius: 18px; border: 2px solid #9d7741; cursor: pointer; touch-action: manipulation; margin: 0 auto; }
   .renju-app .infoGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
   .renju-app .card { background: rgba(0,0,0,0.18); border-radius: 14px; padding: 10px 12px; }
   .renju-app .card .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
@@ -182,9 +183,8 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
   .renju-app .info-tip { position: relative; display: inline-flex; align-items: center; cursor: help; color: var(--muted); font-size: 13px; font-weight: 400; }
   .renju-app .info-tip-text { visibility: hidden; opacity: 0; background: #1b2430; color: var(--text); font-size: 12px; border-radius: 10px; padding: 9px 12px; width: 230px; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 8px); border: 1px solid #3d4a5d; line-height: 1.5; transition: opacity 0.15s; z-index: 20; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
   .renju-app .info-tip:hover .info-tip-text { visibility: visible; opacity: 1; }
-  @media (max-width: 1080px) {
-    .renju-app { --board-size: min(82vw, 680px); }
-    .renju-app .wrap { grid-template-columns: 1fr; max-width: 760px; }
+  @media (max-width: 820px) {
+    .renju-app .wrap { grid-template-columns: 1fr; max-width: 560px; }
   }
 </style>
 
@@ -1293,6 +1293,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
   init();
 })();
 </script>
+</div>
 
 
 
