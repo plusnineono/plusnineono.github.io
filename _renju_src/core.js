@@ -335,22 +335,31 @@ function unplace(c){
  * Full renju forbidden-move test for Black.  `depth` bounds the recursion used
  * by the double-three rule (a three only counts if it can be extended into a
  * straight four by a move that is itself legal).
+ *
+ * Returns 0 when the point is legal, otherwise which rule forbids it.
  */
-function blackForbidden(c, depth){
-  if(board[c] !== EMPTY) return true;
+const FORBID_NONE = 0, FORBID_OVERLINE = 1, FORBID_FOUR = 2, FORBID_THREE = 3;
+const FORBID_TEXT = [
+  '',
+  'Overline: this would give Black six or more in a row, which does not count as a five.',
+  'Double four: this move makes two fours at once.',
+  'Double three: this move makes two open threes at once.'
+];
+function blackForbiddenWhy(c, depth){
+  if(board[c] !== EMPTY) return FORBID_FOUR;
   let ol = 0, fours = 0, nThrees = 0;
   const threeDirs = [0, 0, 0, 0];
   for(let d = 0; d < 4; d++){
     const p = patB[d * NN + c];
-    if(p === P_F5) return false;            // a five always wins, even with an overline
+    if(p === P_F5) return FORBID_NONE;       // a five always wins, even with an overline
     if(p === P_OL) ol = 1;
     else if(isFour(p)) fours += (p === P_D4 ? 2 : 1);
     else if(p === P_F3) threeDirs[nThrees++] = d;
   }
-  if(ol) return true;
-  if(fours >= 2) return true;
-  if(nThrees < 2) return false;
-  if(depth >= 5) return true;               // pathologically deep nesting: assume forbidden
+  if(ol) return FORBID_OVERLINE;
+  if(fours >= 2) return FORBID_FOUR;
+  if(nThrees < 2) return FORBID_NONE;
+  if(depth >= 5) return FORBID_THREE;        // pathologically deep nesting: assume forbidden
   place(c, BLACK);
   let real = 0;
   for(let i = 0; i < nThrees && real < 2; i++){
@@ -361,11 +370,19 @@ function blackForbidden(c, depth){
       const e = LINE[base + j];
       if(e < 0 || board[e] !== EMPTY) continue;
       if(patB[d * NN + e] !== P_F4) continue;
-      if(!blackForbidden(e, depth + 1)){ real++; break; }
+      if(blackForbiddenWhy(e, depth + 1) === FORBID_NONE){ real++; break; }
     }
   }
   unplace(c);
-  return real >= 2;
+  return real >= 2 ? FORBID_THREE : FORBID_NONE;
+}
+function blackForbidden(c, depth){ return blackForbiddenWhy(c, depth) !== FORBID_NONE; }
+
+/** Why Black may not play `c`: '' when the point is legal. */
+function forbiddenReason(c){
+  if(c < 0 || c >= NN || board[c] !== EMPTY) return '';
+  if(qforb[c] === 0) return '';
+  return FORBID_TEXT[blackForbiddenWhy(c, 0)];
 }
 
 function isLegal(c, color){
@@ -821,6 +838,34 @@ function think(opts){
   if(moveList.length === 0)
     return { cell: 112, score: 0, depth: 0, seldepth: 0, nodes: 0, mate: 0, pv: [112], mode: 'opening', candidates: [{ cell: 112, score: 0, tag: 'centre' }] };
 
+  // White's reply to a lone stone is a book move, not a search. With one stone
+  // of each colour the evaluation is exactly symmetric - sumB === sumW whatever
+  // the distance between them - so every candidate scores the same and the
+  // search picks arbitrarily, often two or three lines away. Every named renju
+  // opening has White adjacent to Black's first stone, so play the ring.
+  if(moveList.length === 1 && side === WHITE){
+    const b = moveList[0], bx = b % N, by = (b / N) | 0;
+    const ring = [];
+    let bestCentre = -1;
+    for(let dy = -1; dy <= 1; dy++){
+      for(let dx = -1; dx <= 1; dx++){
+        if(!dx && !dy) continue;
+        const x = bx + dx, y = by + dy;
+        if(x < 0 || x >= N || y < 0 || y >= N) continue;
+        const c = y * N + x;
+        if(CENTREV[c] > bestCentre) bestCentre = CENTREV[c];
+        ring.push(c);
+      }
+    }
+    const best = ring.filter(c => CENTREV[c] === bestCentre);
+    if(best.length){
+      // Vary it so the practice room does not replay the same game every time.
+      const cell = opts.varyOpening ? best[(Math.random() * best.length) | 0] : best[0];
+      return { cell, score: 0, depth: 0, seldepth: 0, nodes: 0, mate: 0,
+               pv: [cell], mode: 'opening', candidates: [{ cell, score: 0, tag: 'restrain' }] };
+    }
+  }
+
   // Immediate five.
   if(cntMe[P_F5] > 0){
     const n = collectShape(side, P_F5, P_F5, scratch, 0, 1);
@@ -899,7 +944,7 @@ function think(opts){
   // straddle the true value ("odd-even effect"). The move always comes from the
   // deepest iteration; the number shown to the user is the mean of the last two
   // iterations, which removes most of that swing without hiding real changes.
-  let prevScore = null, prevPrev = null;
+  let prevScore = null, prevPrev = null, fullRanking = null;
   for(let depth = 2; depth <= maxDepth; depth++){
     let alpha = -Infinity, beta = Infinity;
     let localBest = -1, localScore = -Infinity, completed = 0;
@@ -921,9 +966,17 @@ function think(opts){
       if(v > localScore){ localScore = v; localBest = c; }
       if(v > alpha) alpha = v;
     }
+    // Safe to commit even when the iteration was cut short: the previous best
+    // move is searched first, so localBest either is it or beat it *at this
+    // depth*. (Comparing against the previous depth's score instead would fall
+    // foul of the odd-even swing.)
     if(completed > 0 && localBest >= 0){
       bestCell = localBest; bestScore = localScore; bestDepth = depth;
       prevPrev = prevScore; prevScore = localScore;
+      if(completed === rootCells.length){
+        fullRanking = rootCells.map((c, i) => ({ cell: c, score: localScores[i] }))
+          .filter(e => e.score > -Infinity).sort((a, b) => b.score - a.score);
+      }
       for(let i = 0; i < rootCells.length; i++) if(localScores[i] > -Infinity) scores[i] = localScores[i];
       // Re-order for the next iteration.
       const order = rootCells.map((c, i) => [c, scores[i]]);
@@ -940,11 +993,9 @@ function think(opts){
   unplace(bestCell);
   const pv = [bestCell, ...pvTail];
 
-  const candidates = [];
-  for(let i = 0; i < Math.min(8, rootCells.length); i++){
-    if(scores[i] === -Infinity) continue;
-    candidates.push({ cell: rootCells[i], score: scores[i], tag: shapeTagFor(rootCells[i], side) });
-  }
+  const ranking = fullRanking || rootCells.map((c, i) => ({ cell: c, score: scores[i] })).filter(e => e.score > -Infinity);
+  const candidates = ranking.slice(0, 8)
+    .map(e => ({ cell: e.cell, score: e.score, tag: shapeTagFor(e.cell, side) }));
 
   let mate = 0;
   if(bestScore >= MATE - 200) mate = Math.ceil((MATE - bestScore) / 2);
@@ -1006,6 +1057,7 @@ return {
   isLegal,
   isWinningPoint,
   forbiddenPoints,
+  forbiddenReason,
   evaluate,
   think,
   shapeAt,

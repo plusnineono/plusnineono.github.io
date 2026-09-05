@@ -38,9 +38,16 @@ format:
   .renju-app .wrap { display: grid; grid-template-columns: minmax(0, 1fr) clamp(310px, 26%, 460px); gap: 22px; align-items: start; padding: 4px 0 18px; }
   .renju-app .boardCol { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .renju-app .sideCol { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-  .renju-app .boardBox { width: 100%; display: flex; justify-content: center; }
+  .renju-app .boardBox { width: 100%; display: flex; justify-content: center; position: relative; }
+  /* Explains a crossed-out point when it is tapped. */
+  .renju-app .forbidTip { position: absolute; z-index: 5; max-width: 230px; padding: 9px 11px; border-radius: 11px;
+    background: rgba(22, 28, 38, 0.94); border: 1px solid rgba(255, 255, 255, 0.16); color: var(--text);
+    font-size: 12.5px; line-height: 1.45; box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    transform: translate(-50%, -125%); pointer-events: none; opacity: 0; transition: opacity 180ms ease; }
+  .renju-app .forbidTip.show { opacity: 1; }
+  .renju-app .forbidTip b { color: var(--danger); }
   .renju-app .panel { background: linear-gradient(180deg, var(--panel), var(--panel2)); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); padding: 14px; }
-  .renju-app h1 { font-size: 24px; margin: 0 0 2px; color: var(--text); }
+  .renju-app h1 { font-size: 19px; margin: 0 0 8px; color: var(--text); }
   .renju-app .sub { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
   .renju-app .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .renju-app button, .renju-app select { background: #0f1720; color: var(--text); border: 1px solid #3d4a5d; border-radius: 12px; padding: 9px 12px; font-size: 14px; }
@@ -65,7 +72,6 @@ format:
   .renju-app .winRateLegend { width: min(100%, 340px); display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: var(--muted); }
   .renju-app .evalValue { font-size: 30px; font-weight: 800; line-height: 1.1; margin-top: 12px; }
   .renju-app .evalNote { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .renju-app .pvLine { font-size: 12px; color: var(--muted); margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-word; }
   .renju-app .cand { margin-top: 8px; font-size: 13px; line-height: 1.6; display: grid; grid-template-columns: 1fr; gap: 2px 16px; }
   .renju-app .candRow { display: flex; gap: 8px; align-items: baseline; }
   .renju-app .candTag { color: var(--muted); font-size: 12px; flex: 1; }
@@ -87,10 +93,12 @@ format:
 
 <div class="renju-app">
 <h1>Renju Dojo 連珠道場 v6</h1>
-<div class="sub">Pattern-table engine with VCF/VCT threat search and full renju forbidden-move rules. Black may not play a double four, a double three, or an overline &mdash; those points are crossed out.</div>
 <div class="wrap">
   <div class="boardCol">
-    <div class="boardBox"><canvas id="board" width="760" height="760" aria-label="Renju board"></canvas></div>
+    <div class="boardBox">
+      <canvas id="board" width="760" height="760" aria-label="Renju board"></canvas>
+      <div id="forbidTip" class="forbidTip" role="status"></div>
+    </div>
     <div id="resultBanner" class="resultBanner" aria-live="polite"></div>
   </div>
 
@@ -141,7 +149,6 @@ format:
         </div>
         <div id="evalVal" class="evalValue">Level</div>
         <div id="evalNote" class="evalNote"></div>
-        <div id="pvLine" class="pvLine"></div>
       </div>
     </div>
 

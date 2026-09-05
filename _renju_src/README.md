@@ -76,6 +76,14 @@ Against the previous engine (`baseline_v5.js`), with varied openings and each
 side played once per opening, the new engine wins every game while getting a
 tenth of the thinking time.
 
+**Opening.** White's reply to a lone stone is a book move, not a search. With
+one stone of each colour the evaluation is exactly symmetric - `sumB === sumW`
+whatever the distance between the stones - so every candidate scores the same
+and the search picks arbitrarily, often two or three lines away. Every named
+renju opening has White adjacent to Black's first stone, so the engine plays the
+ring (varied between games when the page asks for it). From move 4 on there are
+real shapes to evaluate and the search takes over.
+
 **Score.** One number, in "threat points", from the side to move's point of
 view, with mate scores of the form `MATE - ply`. The page converts it to Black's
 point of view and maps it through a logistic curve for the win-rate bar, so the

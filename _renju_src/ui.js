@@ -13,7 +13,7 @@ self.onmessage = (ev) => {
   const m = ev.data;
   if(m.cmd !== 'think') return;
   core.setMoves(m.moves);
-  const r = core.think({ side: m.side, timeMs: m.timeMs, maxDepth: m.maxDepth });
+  const r = core.think({ side: m.side, timeMs: m.timeMs, maxDepth: m.maxDepth, varyOpening: m.varyOpening });
   self.postMessage({ id: m.id, result: r });
 };`;
 
@@ -46,7 +46,7 @@ self.onmessage = (ev) => {
 
   function thinkHere(moves, side, timeMs, maxDepth){
     core.setMoves(moves);
-    const r = core.think({ side, timeMs, maxDepth });
+    const r = core.think({ side, timeMs, maxDepth, varyOpening: true });
     syncCore();
     return r;
   }
@@ -61,7 +61,7 @@ self.onmessage = (ev) => {
     if(worker){
       const id = ++reqId;
       const p = new Promise(resolve => pending.set(id, { resolve }));
-      worker.postMessage({ cmd: 'think', id, moves, side, timeMs, maxDepth });
+      worker.postMessage({ cmd: 'think', id, moves, side, timeMs, maxDepth, varyOpening: true });
       const r = await p;
       if(r && !r.__stopped) return r;
       if(r && r.__stopped === 'abort') return null;
@@ -91,7 +91,7 @@ self.onmessage = (ev) => {
     banner: $('resultBanner'), engine: $('engineVal'),
     barBlack: $('winRateBlack'), barWhite: $('winRateWhite'),
     labBlack: $('winRateBlackLabel'), labWhite: $('winRateWhiteLabel'),
-    evalVal: $('evalVal'), evalNote: $('evalNote'), pv: $('pvLine'),
+    evalVal: $('evalVal'), evalNote: $('evalNote'), tip: $('forbidTip'),
     cand: $('cand'), candBtn: $('candidatesToggleBtn'), evalBtn: $('evalToggleBtn'),
     evalPanel: $('evalPanel'), numbersBtn: $('numbersToggleBtn')
   };
@@ -104,17 +104,30 @@ self.onmessage = (ev) => {
   // clientWidth already excludes the scrollbar, so this cannot introduce a
   // horizontal one) and stretch the app across the whole window.
   const appEl = document.querySelector('.renju-app');
-  let fittedTo = -1;
+  let fittedW = -1, fittedH = -1;
   function fitToWindow(force){
     if(!appEl || !appEl.getBoundingClientRect) return;
     const vw = document.documentElement ? document.documentElement.clientWidth : 0;
-    if(!vw || (!force && vw === fittedTo)) return;   // measuring forces a reflow
-    fittedTo = vw;
+    const vh = self.innerHeight || 0;
+    if(!vw || (!force && vw === fittedW && vh === fittedH)) return;  // measuring forces a reflow
+    fittedW = vw; fittedH = vh;
     appEl.style.marginLeft = '';
     appEl.style.width = '';
     const left = appEl.getBoundingClientRect().left;
     appEl.style.marginLeft = `${-left}px`;
     appEl.style.width = `${vw}px`;
+    // Cap the board by the height that is actually on screen at scroll 0, so it
+    // never runs off the bottom of the window on any device.
+    const box = canvas.parentElement;
+    if(vh && box && box.getBoundingClientRect){
+      canvas.style.maxWidth = '';
+      const top = box.getBoundingClientRect().top + (self.scrollY || 0);
+      let limit = vh - top - 20;
+      // Below 900px the panels sit under the board, so leave part of the screen
+      // for them instead of pushing the controls off the bottom.
+      if(vw < 900) limit = Math.min(limit, Math.round(vh * 0.62));
+      canvas.style.maxWidth = `${Math.max(240, limit)}px`;
+    }
   }
 
   // ------------------------------------------------------------- rendering --
@@ -252,12 +265,12 @@ self.onmessage = (ev) => {
   function renderEvaluation(){
     if(game.winner){
       const rate = game.winner === BLACK ? 100 : 0;
-      paintBar(rate, game.winner === BLACK ? 'Black wins' : 'White wins', '', []);
+      paintBar(rate, game.winner === BLACK ? 'Black wins' : 'White wins', '');
       return;
     }
-    if(!lastAnalysis){ paintBar(50, 'Level', 'thinking…', []); return; }
+    if(!lastAnalysis){ paintBar(50, 'Level', 'thinking…'); return; }
     const bs = blackScoreOf(lastAnalysis);
-    if(bs === null){ paintBar(50, 'Level', '', []); return; }
+    if(bs === null){ paintBar(50, 'Level', ''); return; }
     const note = `depth ${lastAnalysis.depth}${lastAnalysis.seldepth ? '/' + lastAnalysis.seldepth : ''} · ${fmtNodes(lastAnalysis.nodes)} nodes`;
     paintBar(winRateFor(bs), formatScore(bs), note, lastAnalysis.pv || []);
     renderCandidates(lastAnalysis);
@@ -267,7 +280,7 @@ self.onmessage = (ev) => {
     if(n >= 1e3) return (n / 1e3).toFixed(0) + 'k';
     return String(n);
   }
-  function paintBar(blackRate, label, note, pv){
+  function paintBar(blackRate, label, note){
     els.barBlack.style.width = `${blackRate}%`;
     els.barWhite.style.width = `${100 - blackRate}%`;
     els.labBlack.textContent = `Black ${blackRate}%`;
@@ -275,7 +288,6 @@ self.onmessage = (ev) => {
     els.evalVal.textContent = label;
     els.evalVal.style.color = blackRate > 57 ? 'var(--good)' : blackRate < 43 ? '#ffb4b4' : 'var(--text)';
     els.evalNote.textContent = note;
-    els.pv.textContent = pv && pv.length ? 'Line: ' + pv.map(coordName).join(' ') : '';
   }
   function renderCandidates(res){
     if(!showCandidates){ return; }
@@ -387,15 +399,45 @@ self.onmessage = (ev) => {
     if(toMove !== humanColor) return;
     syncCore();
     if(!core.isLegal(start, toMove)){
-      if(core.board()[start] === EMPTY) flashIllegal(start);   // forbidden point: say so
+      if(core.board()[start] === EMPTY){ flashIllegal(start); explainForbidden(start); }
       return;
     }
+    hideTip();
     if(!pushMove(start)) return;
     analysisToken++;
     updateStatus();
     if(game.winner){ renderEvaluation(); return; }
     await engineMove();
   }
+  let tipTimer = 0;
+  function hideTip(){
+    if(!els.tip || !els.tip.classList) return;
+    els.tip.classList.remove('show');
+    if(tipTimer) clearTimeout(tipTimer);
+  }
+  /** Say *why* a red cross is a red cross, next to the point that was tapped. */
+  function explainForbidden(c){
+    const tip = els.tip;
+    if(!tip || !tip.classList || !canvas.getBoundingClientRect) return;
+    syncCore();
+    const why = core.forbiddenReason(c);
+    if(!why) return;
+    tip.innerHTML = `<b>${coordName(c)} is forbidden for Black.</b><br>${why}`;
+    const box = canvas.parentElement;
+    const cRect = canvas.getBoundingClientRect();
+    const bRect = box && box.getBoundingClientRect ? box.getBoundingClientRect() : cRect;
+    const scale = cRect.width / (canvas.width || 1);
+    let x = cRect.left - bRect.left + px(c % N) * scale;
+    const y = cRect.top - bRect.top + px((c / N) | 0) * scale;
+    x = Math.max(120, Math.min(bRect.width - 120, x));
+    tip.style.left = `${x}px`;
+    tip.style.top = `${y}px`;
+    tip.style.transform = y < 100 ? 'translate(-50%, 30%)' : 'translate(-50%, -125%)';
+    tip.classList.add('show');
+    if(tipTimer) clearTimeout(tipTimer);
+    tipTimer = setTimeout(() => tip.classList.remove('show'), 5000);
+  }
+
   function flashIllegal(c){
     draw();
     const x = px(c % N), y = px((c / N) | 0);
@@ -408,6 +450,7 @@ self.onmessage = (ev) => {
   // ---------------------------------------------------------------- buttons --
   function newGame(){
     abortThinking();
+    hideTip();
     busy = false; analysisToken++;
     game.moves = []; game.winner = 0; game.winLine = null;
     lastAnalysis = null; hintCell = -1; forbidCache = { key: '', cells: [] };
@@ -416,7 +459,7 @@ self.onmessage = (ev) => {
     if(humanColor !== BLACK) engineMove(); else scheduleAnalysis();
   }
   function undo(){
-    abortThinking(); busy = false; analysisToken++;
+    abortThinking(); hideTip(); busy = false; analysisToken++;
     // step back to the human's turn
     if(game.moves.length) game.moves.pop();
     const toMove = () => game.moves.length % 2 === 0 ? BLACK : WHITE;
