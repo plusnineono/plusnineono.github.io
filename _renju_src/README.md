@@ -25,14 +25,22 @@ published.
 | `tune_eval.js` | fits the evaluation weights to them. |
 | `baseline_v5.js` | the previous engine, kept only so `match.js` has something to measure against. |
 
-Tests need a JavaScript runtime. Quarto ships one:
+## Running the tools
+
+There is no `node` or `deno` on this machine's PATH; Quarto bundles a Deno
+binary and `run.sh` finds it for you. Open Terminal and:
+
+```sh
+cd ~/Desktop/website/plusnineono.github.io
+./_renju_src/run.sh help
+./_renju_src/run.sh test          # ~15 seconds
+```
+
+`run.sh help` lists every command. The long form still works if you prefer it:
 
 ```sh
 DENO=/Applications/quarto/bin/tools/aarch64/deno   # x86_64 on Intel Macs
 $DENO run --allow-read _renju_src/test.js
-$DENO run --allow-read _renju_src/ui_test.js
-$DENO run --allow-read _renju_src/match.js 6 800        # 6 games, 800 ms/move
-$DENO run --allow-read _renju_src/match.js 6 400 4000   # new gets 400 ms, old gets 4000 ms
 ```
 
 ## How the engine works
@@ -126,22 +134,29 @@ not thousands of *games*, and a game yields about twenty of them. This is the
 method chess engines call Texel tuning.
 
 ```sh
-DENO=/Applications/quarto/bin/tools/aarch64/deno
+cd ~/Desktop/website/plusnineono.github.io
 
-# 1. play games and record positions labelled with who eventually won.
-#    Appends, so you can stop it, run it again, or run several seeds in
-#    parallel into different files and concatenate them.
-$DENO run --allow-read --allow-write _renju_src/selfplay.js 1000 150 data.txt
+# 1. Play games and record positions labelled with who eventually won.
+#    About an hour for 1000 games; prints an ETA. It appends, so you can stop
+#    it with Ctrl-C and run it again, and keep whatever it had already written.
+./_renju_src/run.sh selfplay 1000 150 data.txt
 
-# 2. fit. Seconds, once the data exists. Dry run first.
-$DENO run --allow-read _renju_src/tune_eval.js data.txt
-$DENO run --allow-read --allow-write _renju_src/tune_eval.js data.txt --apply
+#    To leave it running with the lid open and the terminal closed:
+#    caffeinate -is nohup ./_renju_src/run.sh selfplay 2000 150 data.txt > log.txt 2>&1 &
+#    tail -f log.txt
+
+# 2. Fit. Seconds, once the data exists. Dry run first - it changes nothing.
+./_renju_src/run.sh tune data.txt
+./_renju_src/run.sh apply data.txt
 
 # 3. VERIFY. Fitting outcomes is not the same as playing better.
-$DENO run --allow-read _renju_src/test.js
+./_renju_src/run.sh test
 cp _renju_src/core.js /tmp/core_tuned.js && git stash
-$DENO run --allow-read _renju_src/ab.js 40 600 /tmp/core_tuned.js _renju_src/core.js
-# keep it only if the tuned build actually wins; then git stash pop, build, render
+./_renju_src/run.sh ab 40 600 /tmp/core_tuned.js _renju_src/core.js
+
+# Keep the fit only if the tuned build won. If it did:
+#   git stash pop && ./_renju_src/run.sh build && git commit -am "tuned weights"
+# If it did not, you are already back to the old weights - just: git stash drop
 ```
 
 Scale is worth knowing about. The fit holds the logistic constant K at the
