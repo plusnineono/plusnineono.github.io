@@ -17,7 +17,7 @@ function makeCtx(){
 const listeners = new Map();
 function el(id){
   const e = {
-    id, textContent: '', innerHTML: '', value: '', style: {},
+    id, textContent: '', innerHTML: '', value: '', style: { setProperty(){}, removeProperty(){} },
     className: '', clientWidth: 640, width: 640, height: 640,
     classList: { _s: new Set(), add(...a){ a.forEach(x=>this._s.add(x)); }, remove(...a){ a.forEach(x=>this._s.delete(x)); },
                  toggle(x, on){ on ? this._s.add(x) : this._s.delete(x); }, contains(x){ return this._s.has(x); } },
@@ -117,6 +117,13 @@ ok(get('cand').innerHTML.length > 10, 'candidate list rendered');
 get('undoBtn').onclick(); await sleep(1500);
 console.log('after undo, turn =', get('turnVal').textContent);
 ok(get('turnVal').textContent === 'Black', 'undo returns the move to the human');
+
+// switching sides should update the readout that replaced the dropdown
+get('switchBtn').onclick(); await sleep(1200);
+console.log('side label after switch:', get('sideLabel').textContent);
+ok(get('sideLabel').textContent === 'You play White', 'switch sides updates the readout');
+get('switchBtn').onclick(); await sleep(1200);
+ok(get('sideLabel').textContent === 'You play Black', 'and switches back');
 
 get('newGameBtn').onclick(); await sleep(500);
 ok(get('resultVal').textContent === 'Playing', 'new game resets the result');

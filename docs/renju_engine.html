@@ -130,7 +130,7 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
 <!-- margin-sidebar -->
     
 <!-- main -->
-<main class="content column-page" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">Renju Dojo 連珠道場 v6</h1></header>
+<main class="content column-page" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">Renju Dojo 連珠道場 v6.1</h1></header>
 
 
 
@@ -180,6 +180,10 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
   .renju-app button:hover { filter: brightness(1.15); cursor: pointer; }
   .renju-app button.primary { background: #1b4d8a; }
   .renju-app button.mini { padding: 4px 10px; font-size: 12px; border-radius: 9px; }
+  .renju-app .sideLabel { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: 12px;
+    background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.10); font-size: 14px; font-weight: 600; }
+  .renju-app .sideLabel::before { content: ''; width: 13px; height: 13px; border-radius: 50%;
+    background: var(--stone, #14171b); border: 1px solid rgba(255,255,255,0.35); }
   .renju-app canvas { display: block; width: 100%; max-width: min(100%, calc(100vh - 190px)); aspect-ratio: 1 / 1; height: auto; background: var(--board); border-radius: 18px; border: 2px solid #9d7741; cursor: pointer; touch-action: manipulation; margin: 0 auto; }
   .renju-app .infoGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .renju-app .card { background: rgba(0,0,0,0.18); border-radius: 14px; padding: 10px 12px; }
@@ -234,12 +238,8 @@ gtag('config', 'G-ZBV5W7QD1W', { 'anonymize_ip': true});
       <button id="newGameBtn" class="primary">New game</button>
       <button id="undoBtn">Undo</button>
       <button id="switchBtn">Switch sides</button>
+      <span id="sideLabel" class="sideLabel" aria-live="polite">You play Black</span>
       <button id="engineMoveBtn">Engine move</button>
-      <button id="hintBtn">Hint</button>
-      <select id="humanColorSel" aria-label="Your colour">
-        <option value="1" selected="">You play Black</option>
-        <option value="2">You play White</option>
-      </select>
       <select id="levelSel" aria-label="Engine strength">
         <option value="quick">Quick · 0.5 s</option>
         <option value="normal" selected="">Normal · 2 s</option>
@@ -1449,7 +1449,7 @@ self.onmessage = (ev) => {
   let humanColor = BLACK;
   let busy = false, analysisToken = 0;
   let showNumbers = true, showEval = true, showCandidates = false;
-  let lastAnalysis = null, hintCell = -1;
+  let lastAnalysis = null;
 
   const LEVELS = {
     quick:  { ms: 500,   depth: 12, label: 'Quick' },
@@ -1468,7 +1468,7 @@ self.onmessage = (ev) => {
     labBlack: $('winRateBlackLabel'), labWhite: $('winRateWhiteLabel'),
     evalVal: $('evalVal'), evalNote: $('evalNote'), tip: $('forbidTip'),
     cand: $('cand'), candBtn: $('candidatesToggleBtn'), evalBtn: $('evalToggleBtn'),
-    evalPanel: $('evalPanel'), numbersBtn: $('numbersToggleBtn')
+    evalPanel: $('evalPanel'), numbersBtn: $('numbersToggleBtn'), sideLabel: $('sideLabel')
   };
 
   function syncCore(){ core.setMoves(game.moves); }
@@ -1569,14 +1569,6 @@ self.onmessage = (ev) => {
         ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
         ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
       }
-    }
-
-    // hint
-    if(hintCell >= 0){
-      const x = px(hintCell % N), y = px((hintCell / N) | 0);
-      ctx.strokeStyle = 'rgba(255,209,102,0.95)';
-      ctx.lineWidth = Math.max(2, cp * 0.07);
-      ctx.beginPath(); ctx.arc(x, y, cp * 0.42, 0, Math.PI * 2); ctx.stroke();
     }
 
     const winSet = new Set(game.winLine || []);
@@ -1687,6 +1679,10 @@ self.onmessage = (ev) => {
       ? (game.winner === BLACK ? 'Black wins' : 'White wins')
       : (game.moves.length >= 225 ? 'Draw' : 'Playing');
     els.engine.textContent = busy ? 'Thinking…' : 'Idle';
+    if(els.sideLabel){
+      els.sideLabel.textContent = humanColor === BLACK ? 'You play Black' : 'You play White';
+      if(els.sideLabel.style) els.sideLabel.style.setProperty('--stone', humanColor === BLACK ? '#14171b' : '#f2f5f9');
+    }
     els.depth.textContent = lastAnalysis ? String(lastAnalysis.depth || 0) : '0';
     els.nodes.textContent = lastAnalysis ? fmtNodes(lastAnalysis.nodes || 0) : '0';
     els.banner.className = 'resultBanner';
@@ -1709,7 +1705,6 @@ self.onmessage = (ev) => {
     game.moves.push(c);
     game.winner = core.winner();
     game.winLine = core.winLine();
-    hintCell = -1;
     return true;
   }
 
@@ -1828,7 +1823,7 @@ self.onmessage = (ev) => {
     hideTip();
     busy = false; analysisToken++;
     game.moves = []; game.winner = 0; game.winLine = null;
-    lastAnalysis = null; hintCell = -1; forbidCache = { key: '', cells: [] };
+    lastAnalysis = null; forbidCache = { key: '', cells: [] };
     syncCore();
     updateStatus(); renderEvaluation();
     if(humanColor !== BLACK) engineMove(); else scheduleAnalysis();
@@ -1839,39 +1834,19 @@ self.onmessage = (ev) => {
     if(game.moves.length) game.moves.pop();
     const toMove = () => game.moves.length % 2 === 0 ? BLACK : WHITE;
     if(game.moves.length && toMove() !== humanColor) game.moves.pop();
-    game.winner = 0; game.winLine = null; lastAnalysis = null; hintCell = -1;
+    game.winner = 0; game.winLine = null; lastAnalysis = null;
     syncCore();
     updateStatus(); renderEvaluation(); scheduleAnalysis();
   }
-  async function hint(){
-    if(busy || game.winner) return;
-    const side = game.moves.length % 2 === 0 ? BLACK : WHITE;
-    busy = true; analysisToken++;
-    abortThinking();
-    updateStatus();
-    const lv = LEVELS[level];
-    const res = await think(game.moves.slice(), side, lv.ms, lv.depth);
-    busy = false;
-    if(res && res.cell >= 0){ hintCell = res.cell; lastAnalysis = { ...res, side }; }
-    updateStatus(); renderEvaluation();
-  }
-
   $('newGameBtn').onclick = newGame;
   $('undoBtn').onclick = undo;
-  $('hintBtn').onclick = hint;
   $('engineMoveBtn').onclick = () => engineMove();
   $('switchBtn').onclick = () => {
     humanColor = humanColor === BLACK ? WHITE : BLACK;
-    $('humanColorSel').value = String(humanColor);
     forbidCache = { key: '', cells: [] };
     updateStatus();
     const toMove = game.moves.length % 2 === 0 ? BLACK : WHITE;
     if(!game.winner && toMove !== humanColor) engineMove();
-  };
-  $('humanColorSel').onchange = e => {
-    humanColor = Number(e.target.value);
-    forbidCache = { key: '', cells: [] };
-    newGame();
   };
   $('levelSel').onchange = e => { level = e.target.value; };
   els.evalBtn.onclick = () => {

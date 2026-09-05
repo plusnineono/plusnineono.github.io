@@ -74,7 +74,7 @@ self.onmessage = (ev) => {
   let humanColor = BLACK;
   let busy = false, analysisToken = 0;
   let showNumbers = true, showEval = true, showCandidates = false;
-  let lastAnalysis = null, hintCell = -1;
+  let lastAnalysis = null;
 
   const LEVELS = {
     quick:  { ms: 500,   depth: 12, label: 'Quick' },
@@ -93,7 +93,7 @@ self.onmessage = (ev) => {
     labBlack: $('winRateBlackLabel'), labWhite: $('winRateWhiteLabel'),
     evalVal: $('evalVal'), evalNote: $('evalNote'), tip: $('forbidTip'),
     cand: $('cand'), candBtn: $('candidatesToggleBtn'), evalBtn: $('evalToggleBtn'),
-    evalPanel: $('evalPanel'), numbersBtn: $('numbersToggleBtn')
+    evalPanel: $('evalPanel'), numbersBtn: $('numbersToggleBtn'), sideLabel: $('sideLabel')
   };
 
   function syncCore(){ core.setMoves(game.moves); }
@@ -194,14 +194,6 @@ self.onmessage = (ev) => {
         ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
         ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
       }
-    }
-
-    // hint
-    if(hintCell >= 0){
-      const x = px(hintCell % N), y = px((hintCell / N) | 0);
-      ctx.strokeStyle = 'rgba(255,209,102,0.95)';
-      ctx.lineWidth = Math.max(2, cp * 0.07);
-      ctx.beginPath(); ctx.arc(x, y, cp * 0.42, 0, Math.PI * 2); ctx.stroke();
     }
 
     const winSet = new Set(game.winLine || []);
@@ -312,6 +304,10 @@ self.onmessage = (ev) => {
       ? (game.winner === BLACK ? 'Black wins' : 'White wins')
       : (game.moves.length >= 225 ? 'Draw' : 'Playing');
     els.engine.textContent = busy ? 'Thinking…' : 'Idle';
+    if(els.sideLabel){
+      els.sideLabel.textContent = humanColor === BLACK ? 'You play Black' : 'You play White';
+      if(els.sideLabel.style) els.sideLabel.style.setProperty('--stone', humanColor === BLACK ? '#14171b' : '#f2f5f9');
+    }
     els.depth.textContent = lastAnalysis ? String(lastAnalysis.depth || 0) : '0';
     els.nodes.textContent = lastAnalysis ? fmtNodes(lastAnalysis.nodes || 0) : '0';
     els.banner.className = 'resultBanner';
@@ -334,7 +330,6 @@ self.onmessage = (ev) => {
     game.moves.push(c);
     game.winner = core.winner();
     game.winLine = core.winLine();
-    hintCell = -1;
     return true;
   }
 
@@ -453,7 +448,7 @@ self.onmessage = (ev) => {
     hideTip();
     busy = false; analysisToken++;
     game.moves = []; game.winner = 0; game.winLine = null;
-    lastAnalysis = null; hintCell = -1; forbidCache = { key: '', cells: [] };
+    lastAnalysis = null; forbidCache = { key: '', cells: [] };
     syncCore();
     updateStatus(); renderEvaluation();
     if(humanColor !== BLACK) engineMove(); else scheduleAnalysis();
@@ -464,39 +459,19 @@ self.onmessage = (ev) => {
     if(game.moves.length) game.moves.pop();
     const toMove = () => game.moves.length % 2 === 0 ? BLACK : WHITE;
     if(game.moves.length && toMove() !== humanColor) game.moves.pop();
-    game.winner = 0; game.winLine = null; lastAnalysis = null; hintCell = -1;
+    game.winner = 0; game.winLine = null; lastAnalysis = null;
     syncCore();
     updateStatus(); renderEvaluation(); scheduleAnalysis();
   }
-  async function hint(){
-    if(busy || game.winner) return;
-    const side = game.moves.length % 2 === 0 ? BLACK : WHITE;
-    busy = true; analysisToken++;
-    abortThinking();
-    updateStatus();
-    const lv = LEVELS[level];
-    const res = await think(game.moves.slice(), side, lv.ms, lv.depth);
-    busy = false;
-    if(res && res.cell >= 0){ hintCell = res.cell; lastAnalysis = { ...res, side }; }
-    updateStatus(); renderEvaluation();
-  }
-
   $('newGameBtn').onclick = newGame;
   $('undoBtn').onclick = undo;
-  $('hintBtn').onclick = hint;
   $('engineMoveBtn').onclick = () => engineMove();
   $('switchBtn').onclick = () => {
     humanColor = humanColor === BLACK ? WHITE : BLACK;
-    $('humanColorSel').value = String(humanColor);
     forbidCache = { key: '', cells: [] };
     updateStatus();
     const toMove = game.moves.length % 2 === 0 ? BLACK : WHITE;
     if(!game.winner && toMove !== humanColor) engineMove();
-  };
-  $('humanColorSel').onchange = e => {
-    humanColor = Number(e.target.value);
-    forbidCache = { key: '', cells: [] };
-    newGame();
   };
   $('levelSel').onchange = e => { level = e.target.value; };
   els.evalBtn.onclick = () => {

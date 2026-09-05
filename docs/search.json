@@ -114,9 +114,9 @@
   {
     "objectID": "renju_engine.html",
     "href": "renju_engine.html",
-    "title": "Renju Dojo 連珠道場 v6",
+    "title": "Renju Dojo 連珠道場 v6.1",
     "section": "",
-    "text": "New game\n      Undo\n      Switch sides\n      Engine move\n      Hint\n      \n        You play Black\n        You play White\n      \n      \n        Quick · 0.5 s\n        Normal · 2 s\n        Strong · 6 s\n        Deep · 15 s\n      \n    \n  \n\n  \n    \n      TurnBlack\n      ResultPlaying\n      Depth0\n      Nodes0\n    \n\n    \n      Evaluation\n        ℹThe engine's own search score, from Black's point of view. A positive number means Black is ahead; a forced win is announced as \"wins in N\". The win rate is that score mapped through a logistic curve.\n      \n      On\n    \n    \n      \n        \n          \n          \n        \n        \n          Black 50%\n          White 50%\n        \n        Level\n        \n      \n    \n\n    \n      Top candidates\n      Off\n    \n    No analysis yet.\n\n    \n      Move numbers\n      On\n    \n\n    \n      The engine runs in a Web Worker, so the page stays responsive while it thinks.\n      Engine status: Idle."
+    "text": "New game\n      Undo\n      Switch sides\n      You play Black\n      Engine move\n      \n        Quick · 0.5 s\n        Normal · 2 s\n        Strong · 6 s\n        Deep · 15 s\n      \n    \n  \n\n  \n    \n      TurnBlack\n      ResultPlaying\n      Depth0\n      Nodes0\n    \n\n    \n      Evaluation\n        ℹThe engine's own search score, from Black's point of view. A positive number means Black is ahead; a forced win is announced as \"wins in N\". The win rate is that score mapped through a logistic curve.\n      \n      On\n    \n    \n      \n        \n          \n          \n        \n        \n          Black 50%\n          White 50%\n        \n        Level\n        \n      \n    \n\n    \n      Top candidates\n      Off\n    \n    No analysis yet.\n\n    \n      Move numbers\n      On\n    \n\n    \n      The engine runs in a Web Worker, so the page stays responsive while it thinks.\n      Engine status: Idle."
   },
   {
     "objectID": "minneapolis.html",

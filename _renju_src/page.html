@@ -54,6 +54,10 @@ format:
   .renju-app button:hover { filter: brightness(1.15); cursor: pointer; }
   .renju-app button.primary { background: #1b4d8a; }
   .renju-app button.mini { padding: 4px 10px; font-size: 12px; border-radius: 9px; }
+  .renju-app .sideLabel { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: 12px;
+    background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.10); font-size: 14px; font-weight: 600; }
+  .renju-app .sideLabel::before { content: ''; width: 13px; height: 13px; border-radius: 50%;
+    background: var(--stone, #14171b); border: 1px solid rgba(255,255,255,0.35); }
   .renju-app canvas { display: block; width: 100%; max-width: min(100%, calc(100vh - 190px)); aspect-ratio: 1 / 1; height: auto; background: var(--board); border-radius: 18px; border: 2px solid #9d7741; cursor: pointer; touch-action: manipulation; margin: 0 auto; }
   .renju-app .infoGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .renju-app .card { background: rgba(0,0,0,0.18); border-radius: 14px; padding: 10px 12px; }
@@ -92,7 +96,7 @@ format:
 </style>
 
 <div class="renju-app">
-<h1>Renju Dojo 連珠道場 v6</h1>
+<h1>Renju Dojo 連珠道場 v6.1</h1>
 <div class="wrap">
   <div class="boardCol">
     <div class="boardBox">
@@ -108,12 +112,8 @@ format:
       <button id="newGameBtn" class="primary">New game</button>
       <button id="undoBtn">Undo</button>
       <button id="switchBtn">Switch sides</button>
+      <span id="sideLabel" class="sideLabel" aria-live="polite">You play Black</span>
       <button id="engineMoveBtn">Engine move</button>
-      <button id="hintBtn">Hint</button>
-      <select id="humanColorSel" aria-label="Your colour">
-        <option value="1" selected>You play Black</option>
-        <option value="2">You play White</option>
-      </select>
       <select id="levelSel" aria-label="Engine strength">
         <option value="quick">Quick &middot; 0.5 s</option>
         <option value="normal" selected>Normal &middot; 2 s</option>
