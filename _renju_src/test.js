@@ -301,6 +301,7 @@ console.log('--- speed ---');
   console.log(`  depth ${r.depth} (sel ${r.seldepth}) nodes ${r.nodes} in ${dt.toFixed(0)} ms = ${(r.nodes / dt).toFixed(0)} knodes/s`);
   console.log(`  move ${nameOf(r.cell)} score ${r.score} pv ${r.pv.map(nameOf).join(' ')}`);
   ok(r.depth >= 6, `reaches at least depth 6 in 2 s (got ${r.depth})`);
+  ok(r.seldepth >= 16, `and follows forcing lines deep (seldepth ${r.seldepth})`);
   ok(r.nodes / dt > 60, `at least 60k nodes/s (got ${(r.nodes / dt).toFixed(0)})`);
 }
 

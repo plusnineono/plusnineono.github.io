@@ -166,6 +166,18 @@ const cntB = new Int32Array(NPAT), cntW = new Int32Array(NPAT);
 //        2 = double open three, needs the recursive check.
 const qforb = new Uint8Array(NN);
 const nearCnt = new Uint8Array(NN);
+// Bitmask of the points worth looking at: empty and within 2 of a stone. Move
+// generation and the four-move scan walk this instead of all 225 points, in the
+// same order, so the search behaves identically and just visits fewer cells.
+// (Any point that can make a four has a stone within 2 of it: a four needs 3
+// stones among the 4 other cells of a five-window, and only 2 of those can be
+// further away than 2.)
+const activeMask = new Uint32Array(8);
+function updateActive(c){
+  const w = c >> 5, bit = 1 << (c & 31);
+  if(board[c] === EMPTY && nearCnt[c] !== 0) activeMask[w] |= bit;
+  else activeMask[w] &= ~bit;
+}
 let sumB = 0, sumW = 0, forbCnt = 0, posSum = 0;
 
 const moveList = [];
@@ -184,7 +196,13 @@ const ZB = new Int32Array(NN * 2), ZB2 = new Int32Array(NN * 2);
 })();
 let hash1 = 0, hash2 = 0;
 
-function addContrib(c){
+/**
+ * Recompute one empty point's aggregate from its four direction patterns and
+ * fold the difference into the running totals. Placing a stone touches ~25
+ * empty neighbours, so this is the hottest function in the engine: it applies
+ * deltas rather than removing and re-adding the point's whole contribution.
+ */
+function refreshCell(c){
   // Black
   {
     let b = 0, s = 0, ol = 0, fours = 0, threes = 0;
@@ -202,9 +220,15 @@ function addContrib(c){
     }
     if(q !== 0){ b = 0; s = 0; }
     const v = q !== 0 ? 0 : VAL[b] + COMBO[b * NPAT + s];
-    bstB[c] = b; secB[c] = s; valB[c] = v; qforb[c] = q;
-    sumB += v; cntB[b]++;
-    if(q === 1) forbCnt++;
+    sumB += v - valB[c];
+    const ob = bstB[c];
+    if(ob !== b){ cntB[ob]--; cntB[b]++; bstB[c] = b; }
+    if(qforb[c] !== q){
+      if(qforb[c] === 1) forbCnt--;
+      if(q === 1) forbCnt++;
+      qforb[c] = q;
+    }
+    secB[c] = s; valB[c] = v;
   }
   // White
   {
@@ -214,14 +238,17 @@ function addContrib(c){
       if(p > b){ s = b; b = p; } else if(p > s) s = p;
     }
     const v = VAL[b] + COMBO[b * NPAT + s];
-    bstW[c] = b; secW[c] = s; valW[c] = v;
-    sumW += v; cntW[b]++;
+    sumW += v - valW[c];
+    const ob = bstW[c];
+    if(ob !== b){ cntW[ob]--; cntW[b]++; bstW[c] = b; }
+    secW[c] = s; valW[c] = v;
   }
 }
 
-function removeContrib(c){
-  sumB -= valB[c]; cntB[bstB[c]]--;
-  sumW -= valW[c]; cntW[bstW[c]]--;
+/** The point is about to be occupied: take its contribution back out. */
+function clearCell(c){
+  sumB -= valB[c]; cntB[bstB[c]]--; cntB[0]++;
+  sumW -= valW[c]; cntW[bstW[c]]--; cntW[0]++;
   if(qforb[c] === 1) forbCnt--;
   valB[c] = 0; valW[c] = 0; bstB[c] = 0; bstW[c] = 0;
   secB[c] = 0; secW[c] = 0; qforb[c] = 0;
@@ -233,7 +260,7 @@ function bumpNear(c, delta){
   const x0 = Math.max(0, x - 2), x1 = Math.min(N - 1, x + 2);
   for(let yy = y0; yy <= y1; yy++){
     const row = yy * N;
-    for(let xx = x0; xx <= x1; xx++) nearCnt[row + xx] += delta;
+    for(let xx = x0; xx <= x1; xx++){ nearCnt[row + xx] += delta; updateActive(row + xx); }
   }
 }
 
@@ -242,7 +269,7 @@ function resetBoard(){
   patB.fill(P_NONE); patW.fill(P_NONE);
   bstB.fill(0); bstW.fill(0); secB.fill(0); secW.fill(0);
   valB.fill(0); valW.fill(0); qforb.fill(0); nearCnt.fill(0);
-  cntB.fill(0); cntW.fill(0);
+  cntB.fill(0); cntW.fill(0); activeMask.fill(0);
   sumB = 0; sumW = 0; forbCnt = 0; posSum = 0;
   hash1 = 0; hash2 = 0;
   moveList.length = 0; winner = 0; winLine = null;
@@ -256,7 +283,8 @@ function resetBoard(){
       patW[d * NN + c] = shapeWhite(k + CENTRE_POW);
     }
   }
-  for(let c = 0; c < NN; c++) addContrib(c);
+  cntB[0] = NN; cntW[0] = NN;
+  for(let c = 0; c < NN; c++) refreshCell(c);
 }
 
 /** Does playing `color` at `c` complete a five (a win)? */
@@ -267,7 +295,8 @@ function isWinningPoint(c, color){
 }
 
 function place(c, color){
-  removeContrib(c);
+  clearCell(c);
+  cntB[0]--; cntW[0]--;          // the point is occupied now, not an empty "none"
   board[c] = color;
   const cb = color === BLACK ? 1 : 2;
   const cw = color === BLACK ? 2 : 1;
@@ -282,10 +311,9 @@ function place(c, color){
       const ix = dOff + c2;
       keyB[ix] += cb * pw; keyW[ix] += cw * pw;
       if(board[c2] === EMPTY){
-        removeContrib(c2);
         patB[ix] = shB(keyB[ix] + CENTRE_POW);
         patW[ix] = shW(keyW[ix] + CENTRE_POW);
-        addContrib(c2);
+        refreshCell(c2);
       }
     }
   }
@@ -314,20 +342,21 @@ function unplace(c){
       const ix = dOff + c2;
       keyB[ix] -= cb * pw; keyW[ix] -= cw * pw;
       if(board[c2] === EMPTY){
-        removeContrib(c2);
         patB[ix] = shB(keyB[ix] + CENTRE_POW);
         patW[ix] = shW(keyW[ix] + CENTRE_POW);
-        addContrib(c2);
+        refreshCell(c2);
       }
     }
   }
   board[c] = EMPTY;
+  cntB[0]++; cntW[0]++;          // empty again
   for(let d = 0; d < 4; d++){
     const ix = d * NN + c;
     patB[ix] = shB(keyB[ix] + CENTRE_POW);
     patW[ix] = shW(keyW[ix] + CENTRE_POW);
   }
-  addContrib(c);
+  refreshCell(c);
+  updateActive(c);
 }
 
 // ------------------------------------------------------- renju legality ----
@@ -453,8 +482,12 @@ function evaluate(side){
   // reported score swing by a full open three every single ply.
   const tempo = Math.min(700, cntMe[P_F4] * 300 + cntMe[P_D4] * 300 + cntMe[P_F3] * 25);
   let s = me - op + tempo;
-  // Black's forbidden points are permanent holes in Black's shape.
-  s += (side === WHITE ? forbCnt * 12 : -forbCnt * 12);
+  // Black's forbidden points are permanent holes in Black's shape, and the
+  // main thing White plays for. Double-three points are only counted at a
+  // discount: the quick test that finds them can be wrong, the recursive one
+  // is too slow to run over the board at every node.
+  const forbBonus = forbCnt * 12;
+  s += (side === WHITE ? forbBonus : -forbBonus);
   s += (side === BLACK ? posSum * 3 : -posSum * 3);
   if(s > 400000) s = 400000;
   if(s < -400000) s = -400000;
@@ -479,7 +512,12 @@ const histB   = new Int32Array(NN), histW = new Int32Array(NN);
 
 // Quiescence budget: a forced block costs 1, playing a four costs 2, so the
 // VCF chain at a leaf is bounded both in length and in width.
-const QDEPTH = 10;
+const QDEPTH = 10;      // quiescence: a block costs 1, playing a four costs 2
+const QWIDTH = 8;       // four-moves tried per quiescence node
+const VCT_MAXD = 11;    // attacker moves in the root threat search
+const VCT_DEFW = 12;    // defender replies it considers
+const LIM_HI = 16, LIM_MID = 13, LIM_LO = 10;   // moves per node, by depth
+const ROOTW = 24;
 let nodes = 0, deadline = 0, aborted = false, seldepth = 0;
 
 function timeUp(){
@@ -492,10 +530,14 @@ function timeUp(){
 function collectShape(color, lo, hi, out, off, max){
   const bst = color === BLACK ? bstB : bstW;
   let n = 0;
-  for(let c = 0; c < NN; c++){
-    if(board[c] !== EMPTY) continue;
-    const b = bst[c];
-    if(b >= lo && b <= hi){ out[off + n] = c; if(++n >= max) break; }
+  for(let w = 0; w < 8; w++){
+    let bits = activeMask[w];
+    while(bits !== 0){
+      const c = (w << 5) + (31 - Math.clz32(bits & -bits));
+      bits &= bits - 1;
+      const b = bst[c];
+      if(b >= lo && b <= hi){ out[off + n] = c; if(++n >= max) return n; }
+    }
   }
   return n;
 }
@@ -556,10 +598,12 @@ function genMoves(side, ply, limit, ttMove){
   const hist  = side === BLACK ? histB : histW;
   const k0 = killer[ply * 2], k1 = killer[ply * 2 + 1];
   let n = 0, worst = 0x7fffffff, worstAt = -1;
-  for(let c = 0; c < NN; c++){
-    if(board[c] !== EMPTY) continue;
+  for(let w = 0; w < 8; w++){
+  let bits = activeMask[w];
+  while(bits !== 0){
+    const c = (w << 5) + (31 - Math.clz32(bits & -bits));
+    bits &= bits - 1;
     const vm = valMe[c], vo = valOp[c];
-    if(nearCnt[c] === 0 && bstMe[c] < P_B4 && bstOp[c] < P_B4) continue;
     if(side === BLACK){
       if(qforb[c] === 1) continue;
       if(qforb[c] === 2 && blackForbidden(c, 0)) continue;
@@ -584,6 +628,7 @@ function genMoves(side, ply, limit, ttMove){
       worst = 0x7fffffff; worstAt = -1;
       for(let i = 0; i < n; i++) if(moveBuf[off + i] < worst){ worst = moveBuf[off + i]; worstAt = i; }
     }
+  }
   }
   // Insertion sort, descending: n is small (<= limit).
   for(let i = 1; i < n; i++){
@@ -661,7 +706,7 @@ function search(depth, alpha, beta, side, ply){
     }
   }
 
-  const limit = depth >= 6 ? 16 : depth >= 4 ? 13 : 10;
+  const limit = depth >= 6 ? LIM_HI : depth >= 4 ? LIM_MID : LIM_LO;
   const n = genMoves(side, ply, limit, ttMove);
   if(n === 0) return evaluate(side);
   const off = ply * 48;
@@ -674,7 +719,12 @@ function search(depth, alpha, beta, side, ply){
     const tag = bstMe[c], oppTag = bstOp[c];
     place(c, side);
     const forcing = tag >= P_B4 || oppTag >= P_B4;
-    const ext = (tag >= P_B4 && ply < 16) ? 1 : 0;
+    // Extend the forcing moves. Fours were always extended; extending open
+    // threes as well is worth about 60% in self-play, because an open three
+    // must be answered too - it turns the main search into a cheap threat
+    // search rather than leaving all of that to the root VCT.
+    const forcing3 = tag >= P_B4;
+    const ext = (forcing3 && ply < 16) ? 1 : 0;
     const nd = depth - 1 + ext;
     let v;
     if(i === 0){
@@ -761,7 +811,7 @@ function vctWin(attacker, side, depth, ply){
     return r;
   }
   if(ply >= MAX_PLY - 6) return false;
-  const n = genMoves(defender, ply, 12, -1);
+  const n = genMoves(defender, ply, VCT_DEFW, -1);
   if(n === 0) return false;
   const mo = ply * 48;
   const cells = [];
@@ -885,7 +935,7 @@ function think(opts){
     // The move is forced; spend a fraction of the budget just to get a score.
     deadline = now() + Math.min(timeMs, 600);
   } else {
-    const rootN = genMoves(side, 0, 24, -1);
+    const rootN = genMoves(side, 0, ROOTW, -1);
     for(let i = 0; i < rootN; i++) rootCells.push(moveBuf[i] & 0xff);
   }
   if(!rootCells.length){
@@ -898,7 +948,7 @@ function think(opts){
     // Threat search: try to prove a forced win before spending time on alpha-beta.
     deadline = now() + Math.min(timeMs * 0.30, 1500);
     let vctCell = -1, vctDepth = 0;
-    for(let d = 3; d <= 11 && !aborted; d += 2){
+    for(let d = 3; d <= VCT_MAXD && !aborted; d += 2){
       const c = findVctMove(side, d, 1);
       if(c >= 0){ vctCell = c; vctDepth = d; break; }
     }

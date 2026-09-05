@@ -308,7 +308,10 @@ self.onmessage = (ev) => {
       els.sideLabel.textContent = humanColor === BLACK ? 'You play Black' : 'You play White';
       if(els.sideLabel.style) els.sideLabel.style.setProperty('--stone', humanColor === BLACK ? '#14171b' : '#f2f5f9');
     }
-    els.depth.textContent = lastAnalysis ? String(lastAnalysis.depth || 0) : '0';
+    // Show both: forcing moves are extended, so the nominal depth alone
+    // understates how far the engine actually looked.
+    els.depth.textContent = lastAnalysis
+      ? `${lastAnalysis.depth || 0}/${lastAnalysis.seldepth || 0}` : '0';
     els.nodes.textContent = lastAnalysis ? fmtNodes(lastAnalysis.nodes || 0) : '0';
     els.banner.className = 'resultBanner';
     if(game.winner){

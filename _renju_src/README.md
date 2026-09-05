@@ -64,9 +64,9 @@ positional asset for White, and drawn on the board for a human playing Black.
 
 **Search.** Iterative-deepening alpha-beta (PVS) with a transposition table,
 killer moves, history ordering and late-move reductions. Five-in-a-row threats
-are handled as forced nodes rather than by search. Quiescence is an exact VCF
-search — only four-creating moves, with the defender forced to block — so every
-leaf is tactically settled. Before the main search the root runs a VCT threat
+are handled as forced nodes rather than by search. Four-creating moves are
+extended by a ply. Quiescence is an exact VCF search — only four-creating moves,
+with the defender forced to block — so every leaf is tactically settled. Before the main search the root runs a VCT threat
 search (attacker plays only fours and open threes) which is where most renju
 wins actually come from, plus the same search from the opponent's side to spot
 threats that have to be broken. The VCT search prunes the defender's replies to
@@ -76,6 +76,41 @@ Against the previous engine (`baseline_v5.js`), with varied openings and each
 side played once per opening, the new engine wins every game while getting a
 tenth of the thinking time.
 
+## Measuring a change
+
+`ab.js` plays two builds against each other, `match.js` plays the current one
+against `baseline_v5.js`. Two rules, both learned the hard way:
+
+**Take the two builds from files, never from flags on a shared global.** An
+earlier harness set tuning flags on `globalThis` before constructing each
+engine, so a config of `{}` inherited whatever the previous build had set: the
+two sides were the same engine and every "result" was noise. It reported a 60%
+score for a change that, measured properly, scores 25%.
+
+**Calibrate the noise first.** The same build against itself scores 4-2 over 6
+games often enough. Forty games is about the minimum for a real signal, and a
+change that helps at 300 ms can hurt at 2 s — measure at the time control
+people actually play at.
+
+### What has been tried
+
+| change | result |
+| --- | --- |
+| extend a ply on open threes, not just fours | **9-31** (40 games, 600 ms) |
+| the same plus defensive quiescence | **10-30** (40 games, 600 ms) |
+| "tension" term so White simplifies and Black complicates | 4-6 overall, 0-5 as White |
+| refusing to commit a part-finished search iteration | 5-7 |
+| deeper VCF at the leaves (quiescence budget 16 vs 10) | 8-8 |
+| walking a bitmask of live points instead of all 225 | search tree identical, ~3% faster |
+| merging the per-point bookkeeping into one delta pass | identical, make/unmake 8% faster |
+
+The engine sits at a local optimum for this design: the search parameters have
+been pushed in both directions and nothing moves. The remaining levers are
+structural — a shared transposition table across Web Workers (blocked on
+GitHub Pages, which cannot send the COOP/COEP headers `SharedArrayBuffer`
+needs), or tuning the evaluation weights by self-play, which needs thousands of
+games rather than dozens.
+
 **Opening.** White's reply to a lone stone is a book move, not a search. With
 one stone of each colour the evaluation is exactly symmetric - `sumB === sumW`
 whatever the distance between the stones - so every candidate scores the same
@@ -84,10 +119,14 @@ renju opening has White adjacent to Black's first stone, so the engine plays the
 ring (varied between games when the page asks for it). From move 4 on there are
 real shapes to evaluate and the search takes over.
 
+The nominal depth understates the reach: forcing moves are extended and
+quiescence chases fours, so depth 8 routinely follows lines past ply 25. The
+page shows both numbers ("8/28") for that reason.
+
 **Score.** One number, in "threat points", from the side to move's point of
 view, with mate scores of the form `MATE - ply`. The page converts it to Black's
 point of view and maps it through a logistic curve for the win-rate bar, so the
-bar, the label and the principal variation can never disagree.
+bar and the label can never disagree.
 
 Two details keep that number readable. The tempo bonus is proportional to the
 threats a side can actually cash in rather than to its whole position, and the
