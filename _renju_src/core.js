@@ -128,29 +128,45 @@ function shW(k){ const v = tblW[k]; return v !== 255 ? v : shapeWhite(k); }
 // achieve, so an open three on the board shows up as two P_F4 points, a live
 // two as two P_F3 points, and so on.  This gives a threat-flavoured evaluation
 // that can be kept as a running sum.
+// ==== TUNED WEIGHTS BEGIN ====
+// Rewritten by tune_eval.js. Everything the evaluation is linear in lives here,
+// in the order features() reports, so a tuned weight vector drops straight in.
+const W_B2 = 4, W_F2 = 18, W_B3 = 22, W_F3 = 180, W_B4 = 70, W_F4 = 1400, W_D4 = 1450, W_F5 = 9000;
+const W_DBL4 = 2600, W_43 = 1600, W_DBL3 = 700, W_F3B3 = 90, W_F3F2 = 40;
+const W_TEMPO = 100;                  // percent of the tempo term
+const W_FORB = 12, W_POS = 3;
+// ==== TUNED WEIGHTS END ====
+
 const VAL = new Int32Array(NPAT);
 VAL[P_NONE] = 0;
-VAL[P_B2]   = 4;
-VAL[P_F2]   = 18;
-VAL[P_B3]   = 22;
-VAL[P_F3]   = 180;
-VAL[P_B4]   = 70;
-VAL[P_F4]   = 1400;
-VAL[P_D4]   = 1450;
-VAL[P_F5]   = 9000;
+VAL[P_B2]   = W_B2;
+VAL[P_F2]   = W_F2;
+VAL[P_B3]   = W_B3;
+VAL[P_F3]   = W_F3;
+VAL[P_B4]   = W_B4;
+VAL[P_F4]   = W_F4;
+VAL[P_D4]   = W_D4;
+VAL[P_F5]   = W_F5;
 VAL[P_OL]   = 0;
 
-const COMBO = new Int32Array(NPAT * NPAT);
 const isFour = p => p >= P_B4 && p <= P_D4;
+/** Which combination bonus a point earns, or -1 for none. */
+function comboClass(b, s){
+  if(isFour(b) && isFour(s)) return 0;          // double four
+  if(isFour(b) && s === P_F3) return 1;         // four-three
+  if(b === P_F3 && s === P_F3) return 2;        // double open three
+  if(b === P_F3 && s === P_B3) return 3;
+  if(b === P_F3 && s === P_F2) return 4;
+  return -1;
+}
+const COMBO_W = [W_DBL4, W_43, W_DBL3, W_F3B3, W_F3F2];
+const N_COMBO = COMBO_W.length;
+
+const COMBO = new Int32Array(NPAT * NPAT);
 for(let b = 0; b < NPAT; b++){
   for(let s = 0; s < NPAT; s++){
-    let v = 0;
-    if(isFour(b) && isFour(s)) v = 2600;                                // double four
-    else if(isFour(b) && s === P_F3) v = 1600;                          // four-three
-    else if(b === P_F3 && s === P_F3) v = 700;                          // double open three
-    else if(b === P_F3 && s === P_B3) v = 90;
-    else if(b === P_F3 && s === P_F2) v = 40;
-    COMBO[b * NPAT + s] = v;
+    const k = comboClass(b, s);
+    COMBO[b * NPAT + s] = k < 0 ? 0 : COMBO_W[k];
   }
 }
 
@@ -473,6 +489,12 @@ function setMoves(list){
 }
 
 // ------------------------------------------------------------ evaluation --
+/** Having the move is worth something in proportion to the threats you can cash in. */
+function tempoTerm(side){
+  const cntMe = side === BLACK ? cntB : cntW;
+  return Math.min(700, cntMe[P_F4] * 300 + cntMe[P_D4] * 300 + cntMe[P_F3] * 25);
+}
+
 function evaluate(side){
   const me = side === BLACK ? sumB : sumW;
   const op = side === BLACK ? sumW : sumB;
@@ -480,15 +502,14 @@ function evaluate(side){
   // Having the move matters in proportion to the threats you can actually cash
   // in, not to your whole position: a bonus proportional to the total made the
   // reported score swing by a full open three every single ply.
-  const tempo = Math.min(700, cntMe[P_F4] * 300 + cntMe[P_D4] * 300 + cntMe[P_F3] * 25);
-  let s = me - op + tempo;
+  const tempo = tempoTerm(side);
+  let s = me - op + Math.round(tempo * W_TEMPO / 100);
   // Black's forbidden points are permanent holes in Black's shape, and the
   // main thing White plays for. Double-three points are only counted at a
   // discount: the quick test that finds them can be wrong, the recursive one
   // is too slow to run over the board at every node.
-  const forbBonus = forbCnt * 12;
-  s += (side === WHITE ? forbBonus : -forbBonus);
-  s += (side === BLACK ? posSum * 3 : -posSum * 3);
+  s += (side === WHITE ? forbCnt * W_FORB : -forbCnt * W_FORB);
+  s += (side === BLACK ? posSum * W_POS : -posSum * W_POS);
   if(s > 400000) s = 400000;
   if(s < -400000) s = -400000;
   return s;
@@ -1078,6 +1099,51 @@ function shapeTagFor(c, color){
   return SHAPE_NAME[b];
 }
 
+// ------------------------------------------------------------- tuning -------
+// The evaluation is a weighted sum of counts, so it is linear in its weights:
+//   evaluate(side) === dot(features(side), WEIGHTS)
+// That is what lets tune_eval.js fit the weights by logistic regression on
+// self-play positions instead of hill-climbing with thousands of games. The
+// test suite asserts the identity, so the tuner is always optimising the
+// evaluation the engine actually uses.
+const FEATURE_NAMES = [
+  'two', 'open two', 'three', 'open three', 'four', 'open four', 'double four(1 line)', 'five',
+  'combo double four', 'combo four-three', 'combo double three', 'combo three+three', 'combo three+two',
+  'tempo', 'forbidden points', 'centre'
+];
+const N_FEATURES = FEATURE_NAMES.length;
+const WEIGHT_KEYS = ['W_B2','W_F2','W_B3','W_F3','W_B4','W_F4','W_D4','W_F5',
+                     'W_DBL4','W_43','W_DBL3','W_F3B3','W_F3F2','W_TEMPO','W_FORB','W_POS'];
+function weights(){
+  return [W_B2, W_F2, W_B3, W_F3, W_B4, W_F4, W_D4, W_F5,
+          W_DBL4, W_43, W_DBL3, W_F3B3, W_F3F2, W_TEMPO / 100, W_FORB, W_POS];
+}
+
+/** Feature vector for the side to move, in the same order as weights(). */
+function features(side){
+  const f = new Float64Array(N_FEATURES);
+  const sgn = side === BLACK ? 1 : -1;
+  for(let c = 0; c < NN; c++){
+    if(board[c] !== EMPTY) continue;
+    const bb = bstB[c], sb = secB[c];
+    if(bb !== P_NONE){
+      f[bb - 1] += sgn;
+      const k = comboClass(bb, sb);
+      if(k >= 0) f[8 + k] += sgn;
+    }
+    const bw = bstW[c], sw = secW[c];
+    if(bw !== P_NONE){
+      f[bw - 1] -= sgn;
+      const k = comboClass(bw, sw);
+      if(k >= 0) f[8 + k] -= sgn;
+    }
+  }
+  f[13] = tempoTerm(side);
+  f[14] = side === WHITE ? forbCnt : -forbCnt;
+  f[15] = side === BLACK ? posSum : -posSum;
+  return f;
+}
+
 /** All empty points that Black is not allowed to play (for the UI markers). */
 function forbiddenPoints(){
   const out = [];
@@ -1108,6 +1174,7 @@ return {
   isWinningPoint,
   forbiddenPoints,
   forbiddenReason,
+  features, weights, FEATURE_NAMES, WEIGHT_KEYS, N_FEATURES,
   evaluate,
   think,
   shapeAt,

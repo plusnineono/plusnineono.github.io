@@ -291,6 +291,36 @@ function findsMove(core, side, want, ms, label){
   ok(stops.includes(r.cell), `black stops the diagonal open three: played ${nameOf(r.cell)}`);
 }
 
+console.log('--- evaluation is linear in its weights ---');
+{
+  // tune_eval.js fits weights against features(); if this identity ever breaks,
+  // the tuner would be optimising something the engine does not use.
+  const core = RenjuCore();
+  const w = core.weights();
+  eq(w.length, core.N_FEATURES, 'weight vector matches the feature count');
+  let worst = 0;
+  const rng = (seed => () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)(7);
+  for(let trial = 0; trial < 40; trial++){
+    const seq = [];
+    const used = new Set();
+    const n = 4 + Math.floor(rng() * 20);
+    while(seq.length < n){
+      const c = Math.floor(rng() * 225);
+      if(used.has(c)) continue;
+      used.add(c); seq.push(c);
+    }
+    core.setMoves(seq);
+    if(core.winner()) continue;
+    for(const side of [core.BLACK, core.WHITE]){
+      const f = core.features(side);
+      let dot = 0;
+      for(let i = 0; i < f.length; i++) dot += f[i] * w[i];
+      worst = Math.max(worst, Math.abs(dot - core.evaluate(side)));
+    }
+  }
+  ok(worst <= 1, `evaluate() === dot(features, weights) (worst gap ${worst})`);
+}
+
 console.log('--- speed ---');
 {
   const core = RenjuCore();

@@ -20,6 +20,9 @@ published.
 | `test.js` | engine regression tests (shapes, forbidden moves, tactics, speed). |
 | `ui_test.js` | runs the generated page against a fake DOM: catches wiring mistakes. |
 | `match.js` | plays the engine against the previous version. |
+| `ab.js` | plays two builds against each other, both taken from files. |
+| `selfplay.js` | records labelled positions for tuning. |
+| `tune_eval.js` | fits the evaluation weights to them. |
 | `baseline_v5.js` | the previous engine, kept only so `match.js` has something to measure against. |
 
 Tests need a JavaScript runtime. Quarto ships one:
@@ -104,12 +107,57 @@ people actually play at.
 | walking a bitmask of live points instead of all 225 | search tree identical, ~3% faster |
 | merging the per-point bookkeeping into one delta pass | identical, make/unmake 8% faster |
 
-The engine sits at a local optimum for this design: the search parameters have
-been pushed in both directions and nothing moves. The remaining levers are
-structural — a shared transposition table across Web Workers (blocked on
-GitHub Pages, which cannot send the COOP/COEP headers `SharedArrayBuffer`
-needs), or tuning the evaluation weights by self-play, which needs thousands of
-games rather than dozens.
+The engine sits at a local optimum for its *search* parameters: they have been
+pushed in both directions and nothing moves. What has never been fitted is the
+evaluation — see below.
+
+## Tuning the evaluation from self-play
+
+The evaluation is a weighted sum of counts, so it is **linear in its weights**:
+
+```
+evaluate(side) === dot(features(side), weights())
+```
+
+`test.js` asserts that identity, which is what makes fitting cheap. Because the
+model is linear, tuning it against game outcomes is logistic regression, not
+reinforcement learning in the usual sense: you need thousands of *positions*,
+not thousands of *games*, and a game yields about twenty of them. This is the
+method chess engines call Texel tuning.
+
+```sh
+DENO=/Applications/quarto/bin/tools/aarch64/deno
+
+# 1. play games and record positions labelled with who eventually won.
+#    Appends, so you can stop it, run it again, or run several seeds in
+#    parallel into different files and concatenate them.
+$DENO run --allow-read --allow-write _renju_src/selfplay.js 1000 150 data.txt
+
+# 2. fit. Seconds, once the data exists. Dry run first.
+$DENO run --allow-read _renju_src/tune_eval.js data.txt
+$DENO run --allow-read --allow-write _renju_src/tune_eval.js data.txt --apply
+
+# 3. VERIFY. Fitting outcomes is not the same as playing better.
+$DENO run --allow-read _renju_src/test.js
+cp _renju_src/core.js /tmp/core_tuned.js && git stash
+$DENO run --allow-read _renju_src/ab.js 40 600 /tmp/core_tuned.js _renju_src/core.js
+# keep it only if the tuned build actually wins; then git stash pop, build, render
+```
+
+Scale is worth knowing about. The fit holds the logistic constant K at the
+value the page uses for the win-rate bar, so tuned weights come out already
+calibrated to it — "+2500" really does mean about 73%. It also means the fit
+picks the overall scale for you, and the tuner warns if that scale moves far
+enough to matter, because the tempo cap (700) and the mate band assume roughly
+the current one.
+
+What the tuner cannot do: features that rarely fire cannot be fitted (with too
+little data the "double four" combination weight will come back untouched,
+because it almost never occurs), and it only tunes the 16 numbers listed in the
+weight block — the shape classification, the search, and the inner constants of
+the tempo term are all outside the model. Bigger ideas (a policy network, MCTS)
+would have to run in the browser on GitHub Pages, which rules out anything
+needing shared memory or a GPU.
 
 **Opening.** White's reply to a lone stone is a book move, not a search. With
 one stone of each colour the evaluation is exactly symmetric - `sumB === sumW`
