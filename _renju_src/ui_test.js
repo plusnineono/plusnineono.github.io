@@ -118,6 +118,28 @@ get('undoBtn').onclick(); await sleep(1500);
 console.log('after undo, turn =', get('turnVal').textContent);
 ok(get('turnVal').textContent === 'Black', 'undo returns the move to the human');
 
+// Regression: "Engine move" plays the human's colour, so it must also let the
+// opponent answer - otherwise a single Undo unwinds two moves the human never
+// made, and on a nearly empty board that clears the whole thing.
+get('newGameBtn').onclick(); await sleep(600);
+{
+  const before = globalThis.__renju().moves.length;
+  get('engineMoveBtn').onclick(); await sleep(3000);
+  const after = globalThis.__renju().moves.length;
+  ok(after === before + 2, `engine move plays a pair (${before} -> ${after})`);
+  get('undoBtn').onclick(); await sleep(1200);
+  const undone = globalThis.__renju().moves.length;
+  ok(undone === before, `undo returns exactly to where it started (${after} -> ${undone}, wanted ${before})`);
+}
+for(const [x, y] of [[7,7],[8,8]]){ click(x, y); await sleep(2200); }
+{
+  const before = globalThis.__renju().moves.length;
+  get('engineMoveBtn').onclick(); await sleep(3000);
+  get('undoBtn').onclick(); await sleep(1200);
+  const now = globalThis.__renju().moves.length;
+  ok(now === before, `same mid-game: ${before} -> ${now}`);
+}
+
 // switching sides should update the readout that replaced the dropdown
 get('switchBtn').onclick(); await sleep(1200);
 console.log('side label after switch:', get('sideLabel').textContent);

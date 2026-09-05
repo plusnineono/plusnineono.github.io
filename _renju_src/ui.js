@@ -333,20 +333,33 @@ self.onmessage = (ev) => {
     return true;
   }
 
+  /**
+   * Play one engine move - or two, when the engine has just played the human's
+   * own colour. "Engine move" then means "play this one for me", and the
+   * opponent answers as usual, so when the engine is idle it is always the
+   * human's turn again. Undo relies on that: it unwinds back to the human's
+   * turn, and without the pairing a single Undo could take back two moves the
+   * human never made (on a nearly empty board, the whole board).
+   */
   async function engineMove(){
     if(busy || game.winner) return;
-    const side = game.moves.length % 2 === 0 ? BLACK : WHITE;
     busy = true; analysisToken++;
     abortThinking();                        // drop any background analysis still queued
     updateStatus();
     const lv = LEVELS[level];
-    const res = await think(game.moves.slice(), side, lv.ms, lv.depth);
+    for(let step = 0; step < 2; step++){
+      const side = game.moves.length % 2 === 0 ? BLACK : WHITE;
+      const res = await think(game.moves.slice(), side, lv.ms, lv.depth);
+      if(!res || res.cell < 0) break;
+      lastAnalysis = { ...res, side };
+      if(!pushMove(res.cell)) break;
+      updateStatus();
+      renderEvaluation();
+      if(game.winner) break;
+      if(side !== humanColor) break;        // the engine played its own colour: done
+    }
     busy = false;
-    if(!res || res.cell < 0){ updateStatus(); return; }
-    lastAnalysis = { ...res, side };
-    pushMove(res.cell);
     updateStatus();
-    renderEvaluation();
     if(!game.winner) scheduleAnalysis();
   }
 
