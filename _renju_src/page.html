@@ -1,0 +1,168 @@
+---
+pagetitle: "2D Ising Model"
+title-block-style: none
+page-layout: full
+format:
+  html:
+    toc: false
+    smooth-scroll: true
+    sanitize: false
+---
+
+```{=html}
+<style>
+  .renju-app {
+    --bg: #11151c;
+    --panel: #1b2430;
+    --panel2: #243041;
+    --text: #eef2f7;
+    --muted: #b8c3d1;
+    --accent: #ffd166;
+    --danger: #ff6b6b;
+    --good: #86efac;
+    --line: #8b5a2b;
+    --board: #d8b574;
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    display: block;
+    /* Quarto caps the article column at ~1000px. The script measures the real
+       viewport width (excluding any scrollbar) and pulls this block out to the
+       full window; the padding below is the only margin that remains. */
+    box-sizing: border-box;
+    padding: 0 clamp(10px, 2vw, 34px);
+  }
+  .renju-app * { box-sizing: border-box; }
+  /* Board on the left, everything else in a column on the right. The board is
+     capped by the viewport height so it stays fully visible without scrolling;
+     below 900px the two columns stack. */
+  .renju-app .wrap { display: grid; grid-template-columns: minmax(0, 1fr) clamp(310px, 26%, 460px); gap: 22px; align-items: start; padding: 4px 0 18px; }
+  .renju-app .boardCol { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .renju-app .sideCol { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .renju-app .boardBox { width: 100%; display: flex; justify-content: center; }
+  .renju-app .panel { background: linear-gradient(180deg, var(--panel), var(--panel2)); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); padding: 14px; }
+  .renju-app h1 { font-size: 24px; margin: 0 0 2px; color: var(--text); }
+  .renju-app .sub { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .renju-app .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .renju-app button, .renju-app select { background: #0f1720; color: var(--text); border: 1px solid #3d4a5d; border-radius: 12px; padding: 9px 12px; font-size: 14px; }
+  .renju-app button:hover { filter: brightness(1.15); cursor: pointer; }
+  .renju-app button.primary { background: #1b4d8a; }
+  .renju-app button.mini { padding: 4px 10px; font-size: 12px; border-radius: 9px; }
+  .renju-app canvas { display: block; width: 100%; max-width: min(100%, calc(100vh - 190px)); aspect-ratio: 1 / 1; height: auto; background: var(--board); border-radius: 18px; border: 2px solid #9d7741; cursor: pointer; touch-action: manipulation; margin: 0 auto; }
+  .renju-app .infoGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .renju-app .card { background: rgba(0,0,0,0.18); border-radius: 14px; padding: 10px 12px; }
+  .renju-app .card .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .renju-app .card .value { font-size: 15px; font-weight: 600; }
+  .renju-app .resultBanner { margin-top: 14px; padding: 14px 16px; border-radius: 14px; font-weight: 800; font-size: 18px; letter-spacing: 0.02em; text-align: center; background: rgba(255, 209, 102, 0.14); border: 1px solid rgba(255, 209, 102, 0.35); color: #ffe29a; display: none; }
+  .renju-app .resultBanner.show { display: block; }
+  .renju-app .resultBanner.win-black { background: rgba(17, 19, 21, 0.9); border-color: rgba(255,255,255,0.16); color: #f5f7fa; }
+  .renju-app .resultBanner.win-white { background: rgba(240, 244, 248, 0.95); border-color: rgba(120,130,145,0.35); color: #18212b; }
+  .renju-app .sectionHead { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .renju-app .sectionHead > span { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .renju-app .evalBox { background: rgba(0,0,0,0.2); border-radius: 14px; padding: 14px; display: grid; place-items: center; text-align: center; margin-top: 8px; }
+  .renju-app .winRateBar { width: min(100%, 340px); height: 24px; border-radius: 999px; overflow: hidden; display: flex; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 1px 3px rgba(0,0,0,0.22); }
+  .renju-app .winRateFillBlack { background: linear-gradient(90deg, #495668, #9fb0c5); transition: width 220ms ease; }
+  .renju-app .winRateFillWhite { background: linear-gradient(90deg, #ffffff, #d8dee7); transition: width 220ms ease; }
+  .renju-app .winRateLegend { width: min(100%, 340px); display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .renju-app .evalValue { font-size: 30px; font-weight: 800; line-height: 1.1; margin-top: 12px; }
+  .renju-app .evalNote { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .renju-app .pvLine { font-size: 12px; color: var(--muted); margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-word; }
+  .renju-app .cand { margin-top: 8px; font-size: 13px; line-height: 1.6; display: grid; grid-template-columns: 1fr; gap: 2px 16px; }
+  .renju-app .candRow { display: flex; gap: 8px; align-items: baseline; }
+  .renju-app .candTag { color: var(--muted); font-size: 12px; flex: 1; }
+  .renju-app .candScore { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .renju-app .hidden { display: none; }
+  .renju-app .footer { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .renju-app .info-tip { position: relative; display: inline-flex; align-items: center; cursor: help; color: var(--muted); font-size: 13px; font-weight: 400; }
+  .renju-app .info-tip-text { visibility: hidden; opacity: 0; background: #1b2430; color: var(--text); font-size: 12px; border-radius: 10px; padding: 9px 12px; width: 250px; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 8px); border: 1px solid #3d4a5d; line-height: 1.5; transition: opacity 0.15s; z-index: 20; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  .renju-app .info-tip:hover .info-tip-text { visibility: visible; opacity: 1; }
+  @media (max-width: 900px) {
+    .renju-app .wrap { grid-template-columns: minmax(0, 1fr); }
+    .renju-app canvas { max-width: min(100%, calc(100vh - 150px)); }
+  }
+  @media (max-width: 560px) {
+    .renju-app .evalValue { font-size: 24px; }
+    .renju-app canvas { max-width: 100%; }
+  }
+</style>
+
+<div class="renju-app">
+<h1>Renju Dojo 連珠道場 v6</h1>
+<div class="sub">Pattern-table engine with VCF/VCT threat search and full renju forbidden-move rules. Black may not play a double four, a double three, or an overline &mdash; those points are crossed out.</div>
+<div class="wrap">
+  <div class="boardCol">
+    <div class="boardBox"><canvas id="board" width="760" height="760" aria-label="Renju board"></canvas></div>
+    <div id="resultBanner" class="resultBanner" aria-live="polite"></div>
+  </div>
+
+  <div class="sideCol">
+  <div class="panel">
+    <div class="row">
+      <button id="newGameBtn" class="primary">New game</button>
+      <button id="undoBtn">Undo</button>
+      <button id="switchBtn">Switch sides</button>
+      <button id="engineMoveBtn">Engine move</button>
+      <button id="hintBtn">Hint</button>
+      <select id="humanColorSel" aria-label="Your colour">
+        <option value="1" selected>You play Black</option>
+        <option value="2">You play White</option>
+      </select>
+      <select id="levelSel" aria-label="Engine strength">
+        <option value="quick">Quick &middot; 0.5 s</option>
+        <option value="normal" selected>Normal &middot; 2 s</option>
+        <option value="strong">Strong &middot; 6 s</option>
+        <option value="deep">Deep &middot; 15 s</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="infoGrid">
+      <div class="card"><div class="label">Turn</div><div id="turnVal" class="value">Black</div></div>
+      <div class="card"><div class="label">Result</div><div id="resultVal" class="value">Playing</div></div>
+      <div class="card"><div class="label">Depth</div><div id="depthVal" class="value">0</div></div>
+      <div class="card"><div class="label">Nodes</div><div id="nodesVal" class="value">0</div></div>
+    </div>
+
+    <div class="sectionHead">
+      <span>Evaluation
+        <span class="info-tip">&#8505;<span class="info-tip-text">The engine's own search score, from Black's point of view. A positive number means Black is ahead; a forced win is announced as "wins in N". The win rate is that score mapped through a logistic curve.</span></span>
+      </span>
+      <button id="evalToggleBtn" class="mini">On</button>
+    </div>
+    <div id="evalPanel" class="evalBox">
+      <div>
+        <div class="winRateBar" aria-label="Winning rate">
+          <div id="winRateBlack" class="winRateFillBlack" style="width:50%"></div>
+          <div id="winRateWhite" class="winRateFillWhite" style="width:50%"></div>
+        </div>
+        <div class="winRateLegend">
+          <span id="winRateBlackLabel">Black 50%</span>
+          <span id="winRateWhiteLabel">White 50%</span>
+        </div>
+        <div id="evalVal" class="evalValue">Level</div>
+        <div id="evalNote" class="evalNote"></div>
+        <div id="pvLine" class="pvLine"></div>
+      </div>
+    </div>
+
+    <div class="sectionHead">
+      <span>Top candidates</span>
+      <button id="candidatesToggleBtn" class="mini">Off</button>
+    </div>
+    <div id="cand" class="cand hidden">No analysis yet.</div>
+
+    <div class="sectionHead">
+      <span>Move numbers</span>
+      <button id="numbersToggleBtn" class="mini">On</button>
+    </div>
+
+    <div class="footer">
+      The engine runs in a Web Worker, so the page stays responsive while it thinks.
+      Engine status: <span id="engineVal">Idle</span>.
+    </div>
+  </div>
+  </div>
+</div>
+</div>
+
+<script>

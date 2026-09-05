@@ -1,0 +1,1057 @@
+// The previous Renju engine (page version 5.4), extracted from renju_engine.qmd
+// before the v6 rewrite and wrapped in a DOM stub so it can be run headless.
+// Kept only so match.js can measure the new engine against it.
+const stubEl = () => new Proxy({ get value(){ return String(globalThis.__OLD_TIME ?? 2500); }, style: {}, classList: { add(){}, remove(){}, toggle(){} },
+  textContent: '', innerHTML: '', getContext: () => new Proxy({}, { get: () => () => ({ addColorStop(){} }) }),
+  addEventListener(){}, getBoundingClientRect: () => ({ left:0, top:0, width:760, height:760 }),
+  width: 760, height: 760 }, { get: (t,k) => (k in t ? t[k] : (typeof k === 'string' ? undefined : undefined)) });
+globalThis.document = { getElementById: () => stubEl(), addEventListener(){} };
+globalThis.window = { addEventListener(){} };
+globalThis.getComputedStyle = () => ({ getPropertyValue: () => '#d8b574' });
+(() => {
+  const SIZE = 15, EMPTY = 0, BLACK = 1, WHITE = 2;
+  const CELL = 48, PAD = 44, STAR = [3,7,11];
+  const LETTERS = 'ABCDEFGHJKLMNOP';
+  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const turnVal = document.getElementById('turnVal');
+  const resultVal = document.getElementById('resultVal');
+  const resultBanner = document.getElementById('resultBanner');
+  const engineVal = document.getElementById('engineVal');
+  const nodesVal = document.getElementById('nodesVal');
+  const winRateBlack = document.getElementById('winRateBlack');
+  const winRateWhite = document.getElementById('winRateWhite');
+  const winRateBlackLabel = document.getElementById('winRateBlackLabel');
+  const winRateWhiteLabel = document.getElementById('winRateWhiteLabel');
+  const winRateVal = document.getElementById('winRateVal');
+  const candEl = document.getElementById('cand');
+  const errBox = document.getElementById('errBox');
+  const winRatePanel = document.getElementById('winRatePanel');
+  const winRateToggleBtn = document.getElementById('winRateToggleBtn');
+  const candidatesToggleBtn = document.getElementById('candidatesToggleBtn');
+  const newGameBtn = document.getElementById('newGameBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const switchBtn = document.getElementById('switchBtn');
+  const engineMoveBtn = document.getElementById('engineMoveBtn');
+  const humanColorSel = document.getElementById('humanColorSel');
+  const timeSel = document.getElementById('timeSel');
+
+  function other(c){ return c===BLACK ? WHITE : BLACK; }
+  function colorName(c){ return c===BLACK ? 'Black' : 'White'; }
+  function coordName(x,y){ return `${LETTERS[x]}${SIZE-y}`; }
+  function onBoard(x,y){ return x>=0 && x<SIZE && y>=0 && y<SIZE; }
+  function idx(x,y){ return y*SIZE+x; }
+  function centerBonus(x,y){ return 140 - 8*(Math.abs(x-7)+Math.abs(y-7)); }
+  function rand64(){
+    const a = BigInt(Math.floor(Math.random()*2**30));
+    const b = BigInt(Math.floor(Math.random()*2**30));
+    const c = BigInt(Math.floor(Math.random()*2**4));
+    return (a<<34n) ^ (b<<4n) ^ c;
+  }
+  function createZobrist(){
+    const arr = [];
+    for(let i=0;i<SIZE*SIZE;i++) arr.push([rand64(), rand64()]);
+    return arr;
+  }
+
+  class Game {
+    constructor(){
+      this.board = new Uint8Array(SIZE*SIZE);
+      this.turn = BLACK;
+      this.history = [];
+      this.result = 0;
+      this.resultText = 'Playing';
+      this.lastMove = null;
+      this.zhash = 0n;
+      this.zTable = createZobrist();
+      this.humanColor = WHITE;
+      this.engineColor = BLACK;
+    }
+    cloneLite(){
+      const g = new Game();
+      g.board.set(this.board);
+      g.turn = this.turn;
+      g.history = this.history.slice();
+      g.result = this.result;
+      g.resultText = this.resultText;
+      g.lastMove = this.lastMove ? {...this.lastMove} : null;
+      g.zhash = this.zhash;
+      g.zTable = this.zTable;
+      return g;
+    }
+    reset(){
+      this.board.fill(EMPTY); this.turn = BLACK; this.history = []; this.result = 0; this.resultText = 'Playing'; this.lastMove = null; this.zhash = 0n;
+    }
+    get(x,y){ return this.board[idx(x,y)]; }
+    set(x,y,v){ this.board[idx(x,y)] = v; }
+    moveKey(){ return this.history.map(m => `${m.color}:${m.x},${m.y}`).join('|'); }
+    place(x,y,color=this.turn){
+      if(!onBoard(x,y) || this.get(x,y)!==EMPTY || this.result) return {ok:false, reason:'occupied'};
+      if(!this.isLegalMove(x,y,color)) return {ok:false, reason:'forbidden'};
+      this.set(x,y,color);
+      this.zhash ^= this.zTable[idx(x,y)][color-1];
+      const move = {x,y,color};
+      this.history.push(move); this.lastMove = move;
+      const out = this.checkResultAfterMove(x,y,color);
+      if(out.win){ this.result = color; this.resultText = `${colorName(color)} wins`; }
+      else this.turn = other(color);
+      return {ok:true};
+    }
+    undo(){
+      if(!this.history.length) return;
+      const m = this.history.pop();
+      this.set(m.x,m.y,EMPTY);
+      this.zhash ^= this.zTable[idx(m.x,m.y)][m.color-1];
+      this.turn = m.color; this.result = 0; this.resultText = 'Playing'; this.lastMove = this.history[this.history.length-1] || null;
+    }
+    countRun(x,y,dx,dy,color){
+      let n = 1;
+      let xx = x+dx, yy = y+dy;
+      while(onBoard(xx,yy) && this.get(xx,yy)===color){ n++; xx+=dx; yy+=dy; }
+      xx = x-dx; yy = y-dy;
+      while(onBoard(xx,yy) && this.get(xx,yy)===color){ n++; xx-=dx; yy-=dy; }
+      return n;
+    }
+    consecutiveInfo(x,y,dx,dy,color){
+      let left = 0, right = 0;
+      let xx = x-dx, yy = y-dy;
+      while(onBoard(xx,yy) && this.get(xx,yy)===color){ left++; xx-=dx; yy-=dy; }
+      const leftOpen = onBoard(xx,yy) && this.get(xx,yy)===EMPTY;
+      xx = x+dx; yy = y+dy;
+      while(onBoard(xx,yy) && this.get(xx,yy)===color){ right++; xx+=dx; yy+=dy; }
+      const rightOpen = onBoard(xx,yy) && this.get(xx,yy)===EMPTY;
+      return {len:left+1+right, leftOpen, rightOpen, left, right};
+    }
+    lineString(x,y,dx,dy,span=4){
+      let out = '';
+      for(let k=-span;k<=span;k++){
+        const xx = x + dx * k, yy = y + dy * k;
+        if(!onBoard(xx,yy)) out += 'X';
+        else {
+          const v = this.get(xx,yy);
+          out += v===BLACK ? 'B' : v===WHITE ? 'W' : 'E';
+        }
+      }
+      return out;
+    }
+    hasPatternIncludingCenter(line, patterns, center=4){
+      for(const pattern of patterns){
+        for(let start=0; start<=line.length-pattern.length; start++){
+          const offset = center - start;
+          if(offset < 0 || offset >= pattern.length || pattern[offset] !== 'B') continue;
+          let ok = true;
+          for(let i=0;i<pattern.length;i++){
+            if(line[start+i] !== pattern[i]){ ok = false; break; }
+          }
+          if(ok) return true;
+        }
+      }
+      return false;
+    }
+    makesOverline(x,y,color){
+      if(color!==BLACK) return false;
+      for(const [dx,dy] of dirs){ if(this.countRun(x,y,dx,dy,color) >= 6) return true; }
+      return false;
+    }
+    hasFiveAt(x,y,color){
+      for(const [dx,dy] of dirs) if(this.countRun(x,y,dx,dy,color)===5) return true;
+      return false;
+    }
+    hasAtLeastFiveAt(x,y,color){
+      for(const [dx,dy] of dirs) if(this.countRun(x,y,dx,dy,color)>=5) return true;
+      return false;
+    }
+    checkResultAfterMove(x,y,color){
+      if(color===BLACK){
+        if(this.makesOverline(x,y,color)) return {win:false};
+        return {win:this.hasFiveAt(x,y,color)};
+      }
+      return {win:this.hasAtLeastFiveAt(x,y,color)};
+    }
+    isLegalMove(x,y,color=this.turn){
+      if(!onBoard(x,y) || this.get(x,y)!==EMPTY) return false;
+      if(color===WHITE) return true;
+      this.set(x,y,color);
+      const bad = this.isForbiddenPlaced(x,y,color);
+      this.set(x,y,EMPTY);
+      return !bad;
+    }
+    isForbiddenPlaced(x,y,color=BLACK, skipOpenThreeCheck=false){
+      if(color!==BLACK) return false;
+      if(this.makesOverline(x,y,color)) return true;
+      if(this.hasFiveAt(x,y,color)) return false;
+      const fours = this.countFoursCreated(x,y,color);
+      if(fours >= 2) return true;
+      if(skipOpenThreeCheck) return false;
+      const threes = this.countOpenThreesCreated(x,y,color);
+      return threes >= 2;
+    }
+    countFoursDir(x,y,dx,dy,color){
+      let hasFour = false;
+      for(let k=-4;k<=4;k++){
+        const ex=x+dx*k, ey=y+dy*k;
+        if(!onBoard(ex,ey) || this.get(ex,ey)!==EMPTY) continue;
+        this.set(ex,ey,color);
+        // Avoid recursive forbidden-move checks here; this helper only asks
+        // whether the current line can be extended into a five.
+        const wins = color===BLACK ? this.hasFiveAt(ex,ey,color) : this.hasAtLeastFiveAt(ex,ey,color);
+        this.set(ex,ey,EMPTY);
+        if(wins){ hasFour = true; break; }
+      }
+      return hasFour ? 1 : 0;
+    }
+    countFoursCreated(x,y,color){
+      let total = 0;
+      for(const [dx,dy] of dirs) total += this.countFoursDir(x,y,dx,dy,color);
+      return total;
+    }
+    countOpenThreesDir(x,y,dx,dy,color){
+      if(color!==BLACK) return 0;
+      const line = this.lineString(x,y,dx,dy,4);
+      return this.hasPatternIncludingCenter(line, ['EBBBE', 'EBBEBE', 'EBEBBE']) ? 1 : 0;
+    }
+    countOpenThreesCreated(x,y,color){
+      let total = 0;
+      for(const [dx,dy] of dirs) total += this.countOpenThreesDir(x,y,dx,dy,color);
+      return total;
+    }
+    neighborsWithin(x,y,r=2){
+      for(let yy=Math.max(0,y-r); yy<=Math.min(SIZE-1,y+r); yy++) for(let xx=Math.max(0,x-r); xx<=Math.min(SIZE-1,x+r); xx++) if(this.get(xx,yy)!==EMPTY) return true;
+      return false;
+    }
+    classifyMove(x,y,color){
+      if(this.get(x,y)!==EMPTY || !this.isLegalMove(x,y,color)) return {legal:false, tag:'illegal', score:-1e15};
+      const opp = other(color);
+      this.set(x,y,color);
+      const winNow = color===BLACK ? this.hasFiveAt(x,y,color) : this.hasAtLeastFiveAt(x,y,color);
+      const fours = this.countFoursCreated(x,y,color);
+      const threes = this.countOpenThreesCreated(x,y,color);
+      let longest = 0, open3 = 0, semi3 = 0;
+      for(const [dx,dy] of dirs){
+        const inf = this.consecutiveInfo(x,y,dx,dy,color);
+        longest = Math.max(longest, inf.len);
+        if(inf.len===3 && inf.leftOpen && inf.rightOpen) open3++;
+        else if(inf.len===3 && (inf.leftOpen || inf.rightOpen)) semi3++;
+      }
+      this.set(x,y,EMPTY);
+      this.set(x,y,opp);
+      const blockWin = opp===BLACK ? this.hasFiveAt(x,y,opp) : this.hasAtLeastFiveAt(x,y,opp);
+      const blockFours = this.countFoursCreated(x,y,opp);
+      const blockThrees = this.countOpenThreesCreated(x,y,opp);
+      this.set(x,y,EMPTY);
+
+      let tag = 'quiet', score = centerBonus(x,y);
+      if(winNow){ tag='win'; score += 1e12; }
+      else if(blockWin){ tag='block-win'; score += 8e11; }
+      else if(fours >= 2){ tag='double-four'; score += 2.5e10; }
+      else if(fours >= 1){ tag='four'; score += 1.2e10; }
+      else if(threes >= 2){ tag='double-three'; score += 5e9; }
+      else if(threes >= 1 || open3 >= 1){ tag='three'; score += 9e8; }
+      else if(blockFours >= 1){ tag='block-four'; score += 8e9; }
+      else if(blockThrees >= 1){ tag='block-three'; score += 3e8; }
+      score += 2e6 * longest + 3e7 * fours + 2e7 * threes + 5e5 * open3 + 2e5 * semi3 + 1e7 * blockFours + 2e6 * blockThrees;
+      return {legal:true, tag, score, fours, threes, blockFours, blockThrees};
+    }
+    generateCandidateMoves(color=this.turn, limit=32, includeGlobalTactics=false){
+      const moves = [];
+      const seen = new Set();
+      const pushMove = (x, y, cl) => {
+        const id = idx(x, y);
+        if(seen.has(id)) return;
+        seen.add(id);
+        moves.push({x, y, score:cl.score, tag:cl.tag});
+      };
+      if(this.history.length===0) return [{x:7,y:7,score:1e9,tag:'book-center'}];
+
+      if(includeGlobalTactics){
+        // Tactical patterns require empty cells within 4 of an existing stone;
+        // skip the rest to keep classifyMove (which is expensive) off cold squares.
+        const inRange = new Set();
+        for(const m of this.history){
+          for(let yy=Math.max(0,m.y-4); yy<=Math.min(SIZE-1,m.y+4); yy++){
+            for(let xx=Math.max(0,m.x-4); xx<=Math.min(SIZE-1,m.x+4); xx++){
+              if(this.get(xx,yy)===EMPTY) inRange.add(idx(xx,yy));
+            }
+          }
+        }
+        for(const id of inRange){
+          const x = id % SIZE, y = (id - x) / SIZE;
+          const cl = this.classifyMove(x,y,color);
+          if(!cl.legal) continue;
+          if(['win','block-win','double-four','four','double-three','three','block-four','block-three'].includes(cl.tag)) pushMove(x, y, cl);
+        }
+      }
+
+      const radius = this.history.length < 6 ? 3 : 2;
+      const focus = this.lastMove ? [this.lastMove, ...this.history] : this.history;
+      for(const m of focus){
+        const localRadius = this.lastMove && m === this.lastMove ? radius + 1 : radius;
+        for(let yy=Math.max(0,m.y-localRadius); yy<=Math.min(SIZE-1,m.y+localRadius); yy++){
+          for(let xx=Math.max(0,m.x-localRadius); xx<=Math.min(SIZE-1,m.x+localRadius); xx++){
+            if(this.get(xx,yy)!==EMPTY) continue;
+            if(!this.neighborsWithin(xx,yy,2)) continue;
+            const cl = this.classifyMove(xx,yy,color);
+            if(!cl.legal) continue;
+            pushMove(xx, yy, cl);
+          }
+        }
+      }
+      if(moves.length < Math.min(10, limit)){
+        for(const m of this.history){
+          for(let yy=Math.max(0,m.y-4); yy<=Math.min(SIZE-1,m.y+4); yy++){
+            for(let xx=Math.max(0,m.x-4); xx<=Math.min(SIZE-1,m.x+4); xx++){
+              if(this.get(xx,yy)!==EMPTY) continue;
+              if(!this.neighborsWithin(xx,yy,3)) continue;
+              const cl = this.classifyMove(xx,yy,color);
+              if(!cl.legal) continue;
+              pushMove(xx, yy, cl);
+            }
+          }
+        }
+      }
+      if(!moves.length){
+        for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) if(this.get(x,y)===EMPTY){
+          const cl = this.classifyMove(x,y,color);
+          if(cl.legal) pushMove(x, y, cl);
+        }
+      }
+      moves.sort((a,b)=>b.score-a.score);
+      return moves.slice(0,limit);
+    }
+    findAnyLegalMove(color=this.turn){
+      for(let y=0;y<SIZE;y++){
+        for(let x=0;x<SIZE;x++){
+          if(this.get(x,y)!==EMPTY) continue;
+          if(color===WHITE || this.isLegalMove(x,y,color)) return {x, y};
+        }
+      }
+      return null;
+    }
+  }
+
+  const openingBook = new Map([
+    ['', {x:7,y:7, note:'book: center'}],
+    ['1:7,7', {x:7,y:6, note:'book: vertical pressure'}],
+    ['1:7,7|2:7,6', {x:8,y:7, note:'book: simple cross'}],
+    ['1:7,7|2:6,6', {x:8,y:8, note:'book: diagonal balance'}],
+    ['1:7,7|2:8,8', {x:6,y:6, note:'book: mirror diagonal'}],
+    ['1:7,7|2:6,7', {x:8,y:7, note:'book: lateral tension'}],
+    ['1:7,7|2:8,7', {x:6,y:7, note:'book: mirror lateral'}],
+    ['1:7,7|2:7,8', {x:7,y:6, note:'book: mirror vertical'}],
+    ['1:7,7|2:7,6|1:8,7', {x:6,y:7, note:'book: widen center frame'}],
+    ['1:7,7|2:6,6|1:8,8', {x:6,y:8, note:'book: stabilize diagonal'}]
+  ]);
+
+  const game = new Game();
+  let humanColor = BLACK, engineColor = WHITE, searching = false;
+  const MAX_SEARCH_DEPTH = 14;
+  let winRateTicket = 0;
+  let winRateEnabled = true;
+  let candidatesEnabled = false;
+  let forbiddenMarkerCacheKey = '';
+  let forbiddenMarkerCache = [];
+  let forbiddenMarkerSet = new Set();
+
+  function log(){ }
+  function clearLog(){ }
+  function formatScore(s){ if(Math.abs(s)>1e11) return s>0 ? '+Mate' : '-Mate'; return Math.round(s).toLocaleString(); }
+  function getSearchBudgetMs(){
+    return Number(timeSel.value);
+  }
+  function renderCandidateList(candidates){
+    if(!candidatesEnabled) return;
+    candEl.innerHTML = candidates.length ? candidates.map((m,i)=>`${i+1}. ${coordName(m.x,m.y)} &nbsp; ${m.tag || ''} &nbsp; score ${formatScore(m.score)}`).join('<br>') : 'No candidates';
+  }
+  function scoreToBlackWinRate(score, result=0){
+    if(result===BLACK) return 100;
+    if(result===WHITE) return 0;
+    if(Math.abs(score) >= 9e11) return score > 0 ? 99 : 1;
+    // Log-scale so the full evaluateBoard range maps smoothly to 1–99%
+    const normalized = Math.sign(score) * Math.log10(1 + Math.abs(score) / 1e7);
+    const probability = 1 / (1 + Math.exp(-normalized));
+    return Math.max(1, Math.min(99, Math.round(probability * 100)));
+  }
+  function rootScoreToBlackWinRate(score, sideToMove, result=0){
+    const blackScore = sideToMove===BLACK ? score : -score;
+    return scoreToBlackWinRate(blackScore, result);
+  }
+  // Scores come from three sources with different ranges:
+  //   real search:    |score| < 4e10  → use directly
+  //   opening book:  |score| ≈ 5e10   → artificial priority, fall back to board eval
+  //   forced win/def:|score| ≥ 7e11   → show near-certain (99% / 1%)
+  function blackRateFromResult(res, sideToMove, boardForFallback, gameResult){
+    if(gameResult===BLACK) return 100;
+    if(gameResult===WHITE) return 0;
+    if(typeof res?.score !== 'number') return 50;
+    const abs = Math.abs(res.score);
+    if(abs >= 4e10 && abs < 7e11)
+      return scoreToBlackWinRate(evaluateBoard(boardForFallback, BLACK), gameResult);
+    return rootScoreToBlackWinRate(res.score, sideToMove, gameResult);
+  }
+  function renderWinningRate(blackRate){
+    const whiteRate = 100 - blackRate;
+    winRateBlack.style.width = `${blackRate}%`;
+    winRateWhite.style.width = `${whiteRate}%`;
+    winRateBlackLabel.textContent = `Black ${blackRate}%`;
+    winRateWhiteLabel.textContent = `White ${whiteRate}%`;
+    if(blackRate > 55){
+      winRateVal.textContent = 'Black Ahead';
+      winRateVal.style.color = 'var(--good)';
+    } else if(blackRate < 45){
+      winRateVal.textContent = 'White Ahead';
+      winRateVal.style.color = '#ffb4b4';
+    } else {
+      winRateVal.textContent = 'Even';
+      winRateVal.style.color = 'var(--text)';
+    }
+  }
+  async function refreshWinningRate(){
+    if(!winRateEnabled && !candidatesEnabled) return;
+    const ticket = ++winRateTicket;
+    if(game.result===BLACK){ renderWinningRate(100); return; }
+    if(game.result===WHITE){ renderWinningRate(0); return; }
+    await new Promise(r => setTimeout(r, 0));
+    if(ticket !== winRateTicket) return;
+    const probe = game.cloneLite();
+    const sideToMove = probe.turn;
+    const res = searchBestMove(probe, sideToMove, MAX_SEARCH_DEPTH);
+    if(ticket !== winRateTicket) return;
+    renderCandidateList(res.candidates || []);
+    if(winRateEnabled) renderWinningRate(blackRateFromResult(res, sideToMove, probe, probe.result));
+  }
+  function updateResultBanner(){
+    resultBanner.className = 'resultBanner';
+    if(!game.result){
+      resultBanner.textContent = '';
+      return;
+    }
+    resultBanner.textContent = game.resultText;
+    resultBanner.classList.add('show', game.result===BLACK ? 'win-black' : 'win-white');
+  }
+
+  function drawBoard(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = getComputedStyle(canvas).getPropertyValue('--board') || '#d8b574';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle = '#6e4a23'; ctx.lineWidth = 1.3;
+    for(let i=0;i<SIZE;i++){
+      const p = PAD + i*CELL;
+      ctx.beginPath(); ctx.moveTo(PAD,p); ctx.lineTo(PAD+(SIZE-1)*CELL,p); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p,PAD); ctx.lineTo(p,PAD+(SIZE-1)*CELL); ctx.stroke();
+    }
+    ctx.fillStyle = '#5a3817';
+    for(const sy of STAR) for(const sx of STAR){ ctx.beginPath(); ctx.arc(PAD+sx*CELL, PAD+sy*CELL, 4, 0, Math.PI*2); ctx.fill(); }
+    ctx.fillStyle = '#3b2a16'; ctx.font = '14px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for(let i=0;i<SIZE;i++){ ctx.fillText(LETTERS[i], PAD+i*CELL, 18); ctx.fillText(String(SIZE-i), 18, PAD+i*CELL); }
+    for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++){
+      const v = game.get(x,y); if(!v) continue;
+      const cx = PAD+x*CELL, cy = PAD+y*CELL;
+      ctx.beginPath(); ctx.arc(cx,cy,18,0,Math.PI*2);
+      const g = ctx.createRadialGradient(cx-6,cy-6,4,cx,cy,20);
+      if(v===BLACK){ g.addColorStop(0,'#5b6678'); g.addColorStop(1,'#111315'); }
+      else { g.addColorStop(0,'#ffffff'); g.addColorStop(1,'#cfd6df'); }
+      ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = v===BLACK ? '#000' : '#888'; ctx.stroke();
+      const moveNum = game.history.findIndex(m => m.x===x && m.y===y) + 1;
+      ctx.fillStyle = v===BLACK ? '#f5f7fa' : '#111'; ctx.font = '11px system-ui'; ctx.fillText(String(moveNum), cx, cy);
+    }
+    if(game.lastMove){ const {x,y} = game.lastMove; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2; ctx.strokeRect(PAD+x*CELL-22, PAD+y*CELL-22, 44, 44); }
+    if(!game.result && game.turn===humanColor && game.turn===BLACK){
+      ctx.fillStyle = 'rgba(255,80,80,0.35)';
+      for(const {x, y} of getForbiddenMarkers()){
+        ctx.beginPath();
+        ctx.arc(PAD + x * CELL, PAD + y * CELL, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  function invalidateForbiddenMarkerCache(){
+    forbiddenMarkerCacheKey = '';
+    forbiddenMarkerCache = [];
+    forbiddenMarkerSet = new Set();
+  }
+  function getForbiddenMarkers(){
+    // Full-board forbidden-move evaluation is extremely expensive and can
+    // freeze the page, which makes the controls feel unclickable.
+    const cacheKey = `${game.zhash}_${game.turn}_${humanColor}_${game.result}`;
+    if(cacheKey === forbiddenMarkerCacheKey) return forbiddenMarkerCache;
+    if(game.history.length < 4 || game.result || game.turn!==humanColor || game.turn!==BLACK){
+      forbiddenMarkerCacheKey = cacheKey;
+      forbiddenMarkerCache = [];
+      forbiddenMarkerSet = new Set();
+      return forbiddenMarkerCache;
+    }
+
+    const markers = [];
+    const seen = new Set();
+    for(const move of game.history){
+      for(let y=Math.max(0, move.y-2); y<=Math.min(SIZE-1, move.y+2); y++){
+        for(let x=Math.max(0, move.x-2); x<=Math.min(SIZE-1, move.x+2); x++){
+          const key = idx(x, y);
+          if(seen.has(key) || game.get(x,y)!==EMPTY) continue;
+          seen.add(key);
+          if(!game.isLegalMove(x,y,BLACK)) markers.push({x, y});
+        }
+      }
+    }
+    forbiddenMarkerCacheKey = cacheKey;
+    forbiddenMarkerCache = markers;
+    forbiddenMarkerSet = new Set(markers.map(({x, y}) => idx(x, y)));
+    return forbiddenMarkerCache;
+  }
+  function updateStatus(){ turnVal.textContent = colorName(game.turn); resultVal.textContent = game.resultText; engineVal.textContent = searching ? 'Searching…' : 'Idle'; updateResultBanner(); drawBoard(); }
+  function boardPosFromEvent(ev){
+    const rect = canvas.getBoundingClientRect();
+    const mx = (ev.clientX-rect.left) * (canvas.width/rect.width);
+    const my = (ev.clientY-rect.top) * (canvas.height/rect.height);
+    const x = Math.round((mx-PAD)/CELL), y = Math.round((my-PAD)/CELL);
+    if(!onBoard(x,y)) return null;
+    if(Math.hypot(mx-(PAD+x*CELL), my-(PAD+y*CELL)) > CELL*0.45) return null;
+    return {x,y};
+  }
+
+  function findImmediateWins(g, color){
+    const wins = [];
+    // A 5-in-row spans at most 4 cells, so a winning move must be within radius
+    // 4 of an existing stone of the same colour. Restricting the scan cuts the
+    // per-node cost dramatically — this function is called from hot paths.
+    if(!g.history.length){
+      return wins;
+    }
+    const seen = new Set();
+    for(const m of g.history){
+      if(m.color !== color) continue;
+      for(let yy=Math.max(0,m.y-4); yy<=Math.min(SIZE-1,m.y+4); yy++){
+        for(let xx=Math.max(0,m.x-4); xx<=Math.min(SIZE-1,m.x+4); xx++){
+          const id = idx(xx,yy);
+          if(seen.has(id)) continue;
+          seen.add(id);
+          if(g.get(xx,yy)!==EMPTY) continue;
+          if(color===BLACK && !g.isLegalMove(xx,yy,color)) continue;
+          g.place(xx,yy,color);
+          const won = g.result===color;
+          g.undo();
+          if(won) wins.push({x:xx, y:yy, score:centerBonus(xx,yy), tag:'win'});
+        }
+      }
+    }
+    wins.sort((a,b)=>b.score-a.score);
+    return wins;
+  }
+
+  function forcedDefenseSet(g, color){
+    const oppWins = findImmediateWins(g, other(color));
+    if(!oppWins.length) return null;
+    const defenders = [];
+    for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) if(g.get(x,y)===EMPTY){
+      if(color===BLACK && !g.isLegalMove(x,y,color)) continue;
+      g.place(x,y,color);
+      const theirWins = findImmediateWins(g, other(color));
+      g.undo();
+      if(!theirWins.length){
+        const cl = g.classifyMove(x,y,color);
+        defenders.push({x, y, score:cl.score, tag:cl.tag});
+      }
+    }
+    defenders.sort((a,b)=>b.score-a.score);
+    return {threats:oppWins, defenders};
+  }
+
+  function forcingMoves(g, color){
+    return g.generateCandidateMoves(color, 28, true).filter(m => ['win','block-win','double-four','four','double-three','three','block-four','block-three'].includes(m.tag));
+  }
+
+  function canForceWin(g, attacker, sideToMove, depth, deadline, maxWidth=8){
+    if(performance.now() >= deadline) return false;
+    if(g.result===attacker) return true;
+    if(g.result===other(attacker)) return false;
+    if(depth <= 0) return false;
+
+    if(sideToMove===attacker){
+      const winning = findImmediateWins(g, attacker);
+      if(winning.length) return true;
+      const forcing = forcingMoves(g, attacker).slice(0, maxWidth);
+      for(const m of forcing){
+        if(performance.now() >= deadline) return false;
+        g.place(m.x,m.y,attacker);
+        const rec = g.result===attacker || canForceWin(g, attacker, other(attacker), depth-1, deadline, Math.max(2, maxWidth-1));
+        g.undo();
+        if(rec) return true;
+      }
+      return false;
+    }
+
+    const defender = sideToMove;
+    const attackerImmediate = findImmediateWins(g, attacker);
+    let replies;
+    if(attackerImmediate.length){
+      const defense = forcedDefenseSet(g, defender);
+      if(!defense || !defense.defenders.length) return true;
+      replies = defense.defenders.slice(0, maxWidth);
+    } else {
+      replies = g.generateCandidateMoves(defender, Math.min(6, maxWidth));
+      if(!replies.length) return false;
+    }
+
+    for(const d of replies){
+      if(performance.now() >= deadline) return false;
+      g.place(d.x,d.y,defender);
+      const rec = canForceWin(g, attacker, attacker, depth-1, deadline, Math.max(2, maxWidth-1));
+      g.undo();
+      if(!rec) return false;
+    }
+    return true;
+  }
+
+  function chooseForcedSequenceMove(g, color, deadline){
+    if(performance.now() >= deadline) return null;
+    const myWins = findImmediateWins(g, color);
+    if(myWins.length) return {move:myWins[0], score:9e11, mode:'Immediate win'};
+
+    const defense = forcedDefenseSet(g, color);
+    if(defense){
+      if(defense.defenders.length){
+        defense.defenders.sort((a,b)=>b.score-a.score);
+        return {move:defense.defenders[0], score:7e11, mode:'Forced defense'};
+      }
+      return null;
+    }
+    return null;
+  }
+
+  // Returns moves that create at least one four-threat for `color` (or win immediately).
+  function findFourMoves(g, color){
+    const result = [];
+    const cands = g.generateCandidateMoves(color, 60, true);
+    for(const c of cands){
+      if(g.get(c.x, c.y) !== EMPTY) continue;
+      if(color===BLACK && !g.isLegalMove(c.x, c.y, color)) continue;
+      g.set(c.x, c.y, color);
+      const wins = color===BLACK ? g.hasFiveAt(c.x,c.y,color) : g.hasAtLeastFiveAt(c.x,c.y,color);
+      const fours = wins ? 1 : g.countFoursCreated(c.x, c.y, color);
+      g.set(c.x, c.y, EMPTY);
+      if(fours >= 1 || wins) result.push(c);
+    }
+    result.sort((a,b)=>b.score-a.score);
+    return result;
+  }
+
+  // Boolean VCF (victory by continuous fours) solver — does `attacker` have a
+  // forced win where every attacker move is a four (immediate five-threat)?
+  // Defender's reply is the unique block (or attacker wins immediately).
+  function vcfHasWin(g, attacker, maxPly, deadline, ply=0){
+    if(performance.now() >= deadline) return false;
+    if(ply >= maxPly) return false;
+    if(g.result === attacker) return true;
+    if(g.result === other(attacker)) return false;
+
+    const winNow = findImmediateWins(g, attacker);
+    if(winNow.length) return true;
+
+    const fourMoves = findFourMoves(g, attacker);
+    if(!fourMoves.length) return false;
+
+    for(const move of fourMoves){
+      if(performance.now() >= deadline) return false;
+      g.place(move.x, move.y, attacker);
+      if(g.result === attacker){ g.undo(); return true; }
+      const winSpots = findImmediateWins(g, attacker);
+      let canWin;
+      if(winSpots.length === 0){
+        canWin = false;
+      } else if(winSpots.length >= 2){
+        canWin = true;            // double-four — defender can't block all
+      } else {
+        const block = winSpots[0];
+        if(other(attacker)===BLACK && !g.isLegalMove(block.x, block.y, BLACK)){
+          canWin = true;          // defender's only block is forbidden
+        } else {
+          g.place(block.x, block.y, other(attacker));
+          canWin = vcfHasWin(g, attacker, maxPly, deadline, ply+2);
+          g.undo();
+        }
+      }
+      g.undo();
+      if(canWin) return true;
+    }
+    return false;
+  }
+
+  function findVcfMove(g, attacker, maxPly, deadline){
+    if(performance.now() >= deadline) return null;
+    const winNow = findImmediateWins(g, attacker);
+    if(winNow.length) return winNow[0];
+    const fourMoves = findFourMoves(g, attacker);
+    for(const move of fourMoves){
+      if(performance.now() >= deadline) return null;
+      g.place(move.x, move.y, attacker);
+      if(g.result === attacker){ g.undo(); return move; }
+      const winSpots = findImmediateWins(g, attacker);
+      let canWin;
+      if(winSpots.length === 0){
+        canWin = false;
+      } else if(winSpots.length >= 2){
+        canWin = true;
+      } else {
+        const block = winSpots[0];
+        if(other(attacker)===BLACK && !g.isLegalMove(block.x, block.y, BLACK)){
+          canWin = true;
+        } else {
+          g.place(block.x, block.y, other(attacker));
+          canWin = vcfHasWin(g, attacker, maxPly, deadline, 2);
+          g.undo();
+        }
+      }
+      g.undo();
+      if(canWin) return move;
+    }
+    return null;
+  }
+
+  function boardLines(g){
+    const lines = [];
+    for(let y=0;y<SIZE;y++){
+      let s = '';
+      for(let x=0;x<SIZE;x++) s += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      lines.push(s);
+    }
+    for(let x=0;x<SIZE;x++){
+      let s = '';
+      for(let y=0;y<SIZE;y++) s += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      lines.push(s);
+    }
+    for(let start=0; start<SIZE; start++){
+      let s1 = '', s2 = '';
+      for(let x=start, y=0; x<SIZE && y<SIZE; x++, y++) s1 += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      for(let x=0, y=start; x<SIZE && y<SIZE; x++, y++) s2 += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      if(s1.length >= 5) lines.push(s1);
+      if(start > 0 && s2.length >= 5) lines.push(s2);
+    }
+    for(let start=0; start<SIZE; start++){
+      let s1 = '', s2 = '';
+      for(let x=start, y=0; x>=0 && y<SIZE; x--, y++) s1 += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      for(let x=SIZE-1, y=start; x>=0 && y<SIZE; x--, y++) s2 += g.get(x,y)===BLACK ? 'B' : g.get(x,y)===WHITE ? 'W' : 'E';
+      if(s1.length >= 5) lines.push(s1);
+      if(start > 0 && s2.length >= 5) lines.push(s2);
+    }
+    return lines;
+  }
+
+  function countOccurrences(line, pattern){
+    let total = 0;
+    for(let i=0;i<=line.length-pattern.length;i++) if(line.slice(i, i+pattern.length)===pattern) total++;
+    return total;
+  }
+
+  function patternScoreForColor(lines, color){
+    const mine = color===BLACK ? 'B' : 'W';
+    const theirs = color===BLACK ? 'W' : 'B';
+    const patterns = [
+      {score: 4.0e8, list: ['EBBBBE']},
+      {score: 1.3e8, list: ['EBBBBW', 'WBBBBE', 'EBWBBBE', 'EBBBWBE', 'EBBWBBE']},
+      {score: 2.5e7, list: ['EEBBBE', 'EBBBEE', 'EBBEBE', 'EBEBBE']},
+      {score: 8.0e6, list: ['EEBBE', 'EBBEE', 'EEBEBE', 'EBEEBE']},
+      {score: 9.0e5, list: ['EEBBEE', 'EEBEBEE']}
+    ];
+    let score = 0;
+    for(const raw of lines){
+      const line = raw.replaceAll(mine, 'B').replaceAll(theirs, 'W');
+      for(const entry of patterns){
+        for(const p of entry.list) score += entry.score * countOccurrences(line, p);
+      }
+    }
+    return score;
+  }
+
+  function evaluateBoard(g, perspective){
+    if(g.result===perspective) return 1e12;
+    if(g.result===other(perspective)) return -1e12;
+    if(!g.history.length) return 0;
+    const w = {five: 1e10, openFour: 2.5e7, four: 6e6, openThree: 9e5, brokenThree: 1.8e5, two: 1.8e4};
+    let score = 0;
+    for(let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++){
+      const v = g.get(x,y); if(!v) continue;
+      const sign = v===perspective ? 1 : -1;
+      for(const [dx,dy] of dirs){
+        const px=x-dx, py=y-dy;
+        if(onBoard(px,py) && g.get(px,py)===v) continue;
+        let len=0, xx=x, yy=y;
+        while(onBoard(xx,yy) && g.get(xx,yy)===v){ len++; xx+=dx; yy+=dy; }
+        const rightOpen = onBoard(xx,yy) && g.get(xx,yy)===EMPTY;
+        const leftOpen = onBoard(px,py) && g.get(px,py)===EMPTY;
+        const openCount = (leftOpen?1:0)+(rightOpen?1:0);
+        if(v===BLACK && len>5){ score += sign * -8e7; continue; }
+        if(len>=5) score += sign*w.five;
+        else if(len===4 && openCount===2) score += sign*w.openFour;
+        else if(len===4 && openCount===1) score += sign*w.four;
+        else if(len===3 && openCount===2) score += sign*w.openThree;
+        else if(len===3 && openCount===1) score += sign*w.brokenThree;
+        else if(len===2 && openCount===2) score += sign*w.two;
+      }
+    }
+    const lines = boardLines(g);
+    score += patternScoreForColor(lines, perspective);
+    score -= 1.03 * patternScoreForColor(lines, other(perspective));
+    const my = g.generateCandidateMoves(perspective, 12, true), opp = g.generateCandidateMoves(other(perspective), 12, true);
+    for(const m of my) score += 0.04 * m.score;
+    for(const m of opp) score -= 0.045 * m.score;
+    return score;
+  }
+
+  function searchBestMove(g, color, maxDepth){
+    const tt = new Map();
+    let nodes = 0;
+    let candidateSummary = [];
+    const deadline = performance.now() + getSearchBudgetMs();
+    const killers = Array.from({length: maxDepth+4}, () => [null, null]);
+    const history = [null, new Map(), new Map()]; // [BLACK=1, WHITE=2]
+
+    function ttKey(side){ return `${g.zhash}_${side}`; }
+
+    function quiescence(alpha, beta, side, ply){
+      nodes++;
+      if(performance.now() >= deadline) return evaluateBoard(g, color) * (side===color ? 1 : -1);
+      if(g.result) return g.result===side ? 1e12-ply : -1e12+ply;
+      if(ply > 24) return evaluateBoard(g, color) * (side===color ? 1 : -1);
+      const stand = evaluateBoard(g, color) * (side===color ? 1 : -1);
+      if(stand >= beta) return beta;
+      if(alpha < stand) alpha = stand;
+      const moves = forcingMoves(g, side).slice(0, 8);
+      for(const m of moves){
+        if(performance.now() >= deadline) break;
+        g.place(m.x,m.y,side);
+        const score = g.result===side ? 1e12-ply : -quiescence(-beta, -alpha, other(side), ply+1);
+        g.undo();
+        if(score >= beta) return beta;
+        if(score > alpha) alpha = score;
+      }
+      return alpha;
+    }
+
+    const TACTICAL_TAGS = new Set(['win','block-win','double-four','four','double-three','three','block-four','block-three']);
+    function isQuiet(m){ return !TACTICAL_TAGS.has(m.tag); }
+
+    function negamax(depth, alpha, beta, side, ply=0){
+      nodes++;
+      if(performance.now() >= deadline) return evaluateBoard(g, color) * (side===color ? 1 : -1);
+      if(g.result) return g.result===side ? 1e12-ply : -1e12+ply;
+      if(depth===0) return quiescence(alpha, beta, side, ply);
+
+      // Immediate-win shortcut only — a forced defense merely survives, not wins.
+      if(depth <= 2){
+        const wins = findImmediateWins(g, side);
+        if(wins.length) return (1e12 - ply) * (side===color ? 1 : -1);
+      }
+
+      const key = ttKey(side);
+      const ent = tt.get(key);
+      let ttMove = ent ? ent.move : null;
+      if(ent && ent.depth >= depth){
+        if(ent.flag==='EXACT') return ent.score;
+        if(ent.flag==='LOWER') alpha = Math.max(alpha, ent.score);
+        else beta = Math.min(beta, ent.score);
+        if(alpha >= beta) return ent.score;
+      }
+      const alpha0 = alpha;
+      let moves = g.generateCandidateMoves(side, depth >= 4 ? 24 : 18, depth >= 3);
+      if(!moves.length) return evaluateBoard(g, color) * (side===color ? 1 : -1);
+      if(ply===0) candidateSummary = moves.slice(0,8).map(m => ({...m}));
+
+      // Move ordering: TT move → killers → history bonus
+      if(ttMove){
+        const ti = moves.findIndex(m => m.x===ttMove.x && m.y===ttMove.y);
+        if(ti > 0){ moves.unshift(moves.splice(ti, 1)[0]); }
+      }
+      const kl = killers[ply] || [null, null];
+      for(let ki = 1; ki >= 0; ki--){
+        const k = kl[ki]; if(!k) continue;
+        const ki2 = moves.findIndex((m,i) => i>0 && m.x===k.x && m.y===k.y && isQuiet(m));
+        if(ki2 > 1){ moves.splice(1, 0, moves.splice(ki2, 1)[0]); }
+      }
+      const hist = history[side];
+      for(const m of moves){
+        if(isQuiet(m)){ const h = hist.get(idx(m.x,m.y)); if(h) m.score += h * 0.0005; }
+      }
+
+      let best = null, value = -Infinity, first = true;
+      for(const m of moves){
+        if(performance.now() >= deadline) break;
+        g.place(m.x,m.y,side);
+        // Tactical extension: chase forcing lines a ply deeper
+        const ext = (depth >= 2 && depth <= 8 && ['win','double-four','four','block-win'].includes(m.tag)) ? 1 : 0;
+        const nextDepth = depth - 1 + ext;
+        let score;
+        if(first){ score = -negamax(nextDepth, -beta, -alpha, other(side), ply+1); first=false; }
+        else {
+          score = -negamax(nextDepth, -alpha-1, -alpha, other(side), ply+1);
+          if(score > alpha && score < beta) score = -negamax(nextDepth, -beta, -alpha, other(side), ply+1);
+        }
+        g.undo();
+        m.searchScore = score;
+        if(score > value){ value = score; best = m; }
+        if(score > alpha) alpha = score;
+        if(alpha >= beta){
+          if(isQuiet(m)){
+            const k = killers[ply];
+            if(!k[0] || k[0].x!==m.x || k[0].y!==m.y){ k[1]=k[0]; k[0]={x:m.x,y:m.y}; }
+            hist.set(idx(m.x,m.y), (hist.get(idx(m.x,m.y))||0) + depth*depth);
+          }
+          break;
+        }
+      }
+      let flag = 'EXACT';
+      if(value <= alpha0) flag='UPPER';
+      else if(value >= beta) flag='LOWER';
+      tt.set(key, {depth, score:value, flag, move:best});
+      return value;
+    }
+
+    const key = g.moveKey();
+    if(openingBook.has(key)){
+      const book = openingBook.get(key);
+      if(g.isLegalMove(book.x, book.y, color)) return {move:{x:book.x,y:book.y}, score:5e10, nodes:0, mode:book.note, candidates:[{x:book.x,y:book.y,score:5e10,tag:'book'}]};
+    }
+
+    // Immediate win is always best
+    const myWins = findImmediateWins(g, color);
+    if(myWins.length){
+      const w = myWins[0];
+      return {move:{x:w.x, y:w.y}, score:1e12, nodes:0, mode:'Immediate win', candidates:[{x:w.x,y:w.y,score:1e12,tag:'win'}]};
+    }
+
+    // VCF probe: spend up to ~25% of the time budget on a focused forced-win solver.
+    const totalBudget = getSearchBudgetMs();
+    const vcfDeadline = performance.now() + Math.min(1500, totalBudget * 0.25);
+    const vcfMove = findVcfMove(g, color, 16, vcfDeadline);
+    if(vcfMove){
+      return {move:{x:vcfMove.x,y:vcfMove.y}, score:1e12, nodes:0, mode:'VCF Win', candidates:[{x:vcfMove.x,y:vcfMove.y,score:1e12,tag:'VCF'}]};
+    }
+
+    // Opponent VCF probe: if the opponent has a forced win, we must defend.
+    // Bias root candidate ordering toward moves that disrupt the opponent's VCF.
+    const oppVcfDeadline = performance.now() + Math.min(700, totalBudget * 0.12);
+    const oppVcfMove = findVcfMove(g, other(color), 12, oppVcfDeadline);
+
+    const rootMoves = g.generateCandidateMoves(color, 36, true);
+    if(oppVcfMove){
+      // Put a move that occupies the opponent's first VCF square at the front;
+      // alpha-beta will then verify which root move actually neutralises the threat.
+      const blockIdx = rootMoves.findIndex(m => m.x===oppVcfMove.x && m.y===oppVcfMove.y);
+      if(blockIdx > 0) rootMoves.unshift(rootMoves.splice(blockIdx, 1)[0]);
+      else if(blockIdx < 0){
+        const cl = g.classifyMove(oppVcfMove.x, oppVcfMove.y, color);
+        if(cl.legal) rootMoves.unshift({x:oppVcfMove.x, y:oppVcfMove.y, score:cl.score, tag:cl.tag});
+      }
+    }
+    if(!rootMoves.length){
+      const fallback = g.findAnyLegalMove(color);
+      return fallback
+        ? {move:fallback, score:0, nodes, mode:'Fallback legal move', candidates:[{...fallback, score:0, tag:'fallback'}]}
+        : {move:null, score:0, nodes, mode:'No legal moves', candidates:[]};
+    }
+    let bestMove = null, bestScore = -Infinity;
+    for(let depth=1; depth<=maxDepth; depth++){
+      if(performance.now() >= deadline) break;
+      let localBest = null, localScore = -Infinity;
+      const ordered = depth===1 || !bestMove ? rootMoves.slice() : [bestMove, ...rootMoves.filter(m => m.x!==bestMove.x || m.y!==bestMove.y)];
+      for(const m of ordered){
+        if(performance.now() >= deadline) break;
+        g.place(m.x,m.y,color);
+        const score = -negamax(depth-1, -Infinity, Infinity, other(color), 1);
+        g.undo();
+        m.searchScore = score;
+        if(score > localScore){ localScore = score; localBest = {x:m.x,y:m.y,score}; }
+      }
+      if(!localBest) break;
+      bestMove = localBest;
+      bestScore = localScore;
+      rootMoves.sort((a,b)=>(b.searchScore ?? -Infinity) - (a.searchScore ?? -Infinity));
+      candidateSummary = rootMoves.slice(0,8).map(m => ({x:m.x,y:m.y,score:m.searchScore ?? m.score, tag:m.tag}));
+    }
+    if(!bestMove){
+      const fallback = rootMoves[0] || g.findAnyLegalMove(color);
+      if(fallback) return {move:{x:fallback.x,y:fallback.y}, score:fallback.score ?? 0, nodes, mode:'Fallback after timeout', candidates:candidateSummary.length ? candidateSummary : [{x:fallback.x,y:fallback.y,score:fallback.score ?? 0,tag:'fallback'}]};
+    }
+    return {move:bestMove, score:bestScore, nodes, mode:performance.now() >= deadline ? 'Search (time-limited)' : 'Search', candidates:candidateSummary};
+  }
+
+  async function engineTurn(force=false){
+    if(searching || game.result) return;
+    if(!force && game.turn !== engineColor) return;
+    searching = true; nodesVal.textContent = '0'; engineVal.textContent = 'Searching…'; updateStatus();
+    await new Promise(r => setTimeout(r, 25));
+    const sideToMove = game.turn;
+    const res = searchBestMove(game, sideToMove, MAX_SEARCH_DEPTH);
+    nodesVal.textContent = String(res.nodes);
+    if(res.move){
+      game.place(res.move.x, res.move.y, sideToMove);
+    }
+    searching = false; engineVal.textContent = 'Idle'; updateStatus();
+    if(game.result){
+      await refreshWinningRate();
+      return;
+    }
+    if(winRateEnabled) renderWinningRate(blackRateFromResult(res, sideToMove, game, game.result));
+    // Candidates need a fresh search on the resulting position (human's turn now)
+    if(candidatesEnabled) await refreshWinningRate();
+  }
+
+  async function handleBoardInput(ev){
+    if(searching || game.result || game.turn!==humanColor) return;
+    const pos = boardPosFromEvent(ev); if(!pos) return;
+    if(game.turn===BLACK && humanColor===BLACK){
+      getForbiddenMarkers();
+      if(forbiddenMarkerSet.has(idx(pos.x, pos.y))){ drawBoard(); return; }
+    } else if(!game.isLegalMove(pos.x,pos.y,game.turn)){ drawBoard(); return; }
+    const c = game.turn;
+    game.place(pos.x,pos.y,c);
+    invalidateForbiddenMarkerCache();
+    updateStatus();
+    if(game.result){
+      await refreshWinningRate();
+      return;
+    }
+    await engineTurn();
+  }
+  canvas.addEventListener('click', handleBoardInput);
+  canvas.addEventListener('pointerdown', handleBoardInput);
+
+  newGameBtn.onclick = async () => {
+    game.reset(); humanColor = Number(humanColorSel.value); engineColor = other(humanColor); game.humanColor = humanColor; game.engineColor = engineColor;
+    invalidateForbiddenMarkerCache();
+    clearLog(); updateStatus(); await refreshWinningRate();
+    if(game.turn===engineColor) await engineTurn(true);
+  };
+  undoBtn.onclick = async () => {
+    if(searching) return; if(game.history.length) game.undo(); if(game.history.length && game.turn!==humanColor) game.undo(); invalidateForbiddenMarkerCache(); updateStatus(); await refreshWinningRate();
+  };
+  winRateToggleBtn.onclick = async () => {
+    winRateEnabled = !winRateEnabled;
+    winRateToggleBtn.textContent = winRateEnabled ? 'On' : 'Off';
+    winRatePanel.classList.toggle('hidden', !winRateEnabled);
+    if(winRateEnabled && !searching) await refreshWinningRate();
+  };
+  candidatesToggleBtn.onclick = async () => {
+    candidatesEnabled = !candidatesEnabled;
+    candidatesToggleBtn.textContent = candidatesEnabled ? 'On' : 'Off';
+    candEl.classList.toggle('hidden', !candidatesEnabled);
+    if(candidatesEnabled && !searching) await refreshWinningRate();
+  };
+  switchBtn.onclick = async () => { if(searching) return; humanColor = other(humanColor); engineColor = other(engineColor); humanColorSel.value = String(humanColor); invalidateForbiddenMarkerCache(); updateStatus(); await refreshWinningRate(); if(!game.result && game.turn===engineColor) await engineTurn(true); };
+  engineMoveBtn.onclick = async () => { await engineTurn(true); };
+  humanColorSel.onchange = () => { humanColor = Number(humanColorSel.value); engineColor = other(humanColor); };
+
+  function init(){
+    game.reset();
+    clearLog();
+    errBox.textContent = '';
+    void refreshWinningRate();
+    updateStatus();
+  }
+  window.addEventListener('error', (ev) => {
+    const msg = ev?.error?.stack || ev.message || String(ev);
+    errBox.textContent = `Runtime error: ${msg}`;
+  });
+  globalThis.__OLD = { Game, searchBestMove, findImmediateWins, openingBook, MAX_SEARCH_DEPTH };
+})();

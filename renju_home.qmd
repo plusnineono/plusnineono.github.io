@@ -10,7 +10,7 @@ Renju (連珠) is a type of <i>gomoku</i> (五目) played on a go board.
 For precise rules, please refer to the [Wikipedia page](https://en.wikipedia.org/wiki/Renju).
 Renju is a finite-state, 2-player, zero-sum game of perfect information, and it is known that without any additional rules, Black (the first player) always wins. 
 
-Visit my [Renju practice room](renju_hard.qmd)!
+Visit my [Renju practice room](renju_engine.qmd)!
 
 <!-- Below, I analyze Black's strategies based on openings.
 
